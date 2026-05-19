@@ -30,4 +30,4 @@ ENV PYTHONUNBUFFERED=1
 ENV AGENT_PORT=8080
 
 # Use gunicorn for production
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "120", "main:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "4", "--timeout", "120", "main:app"]

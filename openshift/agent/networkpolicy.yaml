@@ -1,4 +1,4 @@
-# Agent: accept from OpenShift router, connect to MCP server and external LLM
+# Agent: accept from OpenShift router, connect to MCP server and local LLM (llm namespace)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

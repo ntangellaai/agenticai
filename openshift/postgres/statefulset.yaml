@@ -26,6 +26,7 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+        fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: postgres
           # Red Hat UBI PostgreSQL 16 - verified ppc64le support
@@ -68,6 +69,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/pgsql/data

@@ -106,6 +106,23 @@ oc exec <pod-name> -- uname -m
 - Best option if Python dependencies are problematic
 - No native extension issues
 
+### LLM Server (llama.cpp on Power10)
+
+| Item | Value |
+|------|-------|
+| **Software** | `llama.cpp` compiled for ppc64le with Power10 optimizations |
+| **ppc64le** | ✅ Builds natively on Power10 — uses VSX/MMA SIMD extensions |
+| **Namespace** | `llm` (service: `llm-server`, port: 8000) |
+| **API** | OpenAI-compatible `/v1/chat/completions` with tool/function calling |
+| **Model format** | GGUF quantised models (Q4_K_M, Q5_K_M, Q6_K recommended) |
+
+**Notes:**
+- llama.cpp builds cleanly on ppc64le with `make LLAMA_NATIVE=1` (enables Power10 MMA instructions)
+- Tool/function calling requires `--jinja` flag or a model with built-in tool support (e.g., Granite, Llama 3.1+, Mistral)
+- Inference is CPU-bound on Power10; typical latency 5-30s for complex responses — agent timeout set to 120s
+- Recommended: run with `--n-gpu-layers 0 --threads $(nproc)` to maximize Power10 CPU cores
+- Memory: quantised 8B models need ~6-8GB RAM; 70B models need ~40-48GB RAM (Q4_K_M)
+
 ### Streamlit (UI)
 
 | Item | Value |

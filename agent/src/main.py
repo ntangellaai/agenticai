@@ -13,6 +13,7 @@ MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://localhost:3000")
 LLM_ENDPOINT = os.environ.get("LLM_ENDPOINT", "http://llm-server.llm.svc.cluster.local:8000/v1")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MODEL", "ibm/granite-3-8b-instruct")
+LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", "120"))
 AGENT_PORT = int(os.environ.get("AGENT_PORT", "8080"))
 MAX_QUERY_LENGTH = int(os.environ.get("MAX_QUERY_LENGTH", "2000"))
 
@@ -32,6 +33,7 @@ agent = EnterpriseAgent(
     llm_endpoint=LLM_ENDPOINT,
     llm_api_key=LLM_API_KEY,
     llm_model=LLM_MODEL,
+    llm_timeout=LLM_TIMEOUT,
 )
 
 # HTML template for the UI

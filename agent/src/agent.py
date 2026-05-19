@@ -109,9 +109,14 @@ class EnterpriseAgent:
         llm_api_key: str,
         llm_model: str,
         max_tool_calls: int = 10,
+        llm_timeout: int = 120,
     ):
         self.mcp_client = MCPClient(mcp_server_url)
-        self.llm = OpenAI(base_url=llm_endpoint, api_key=llm_api_key)
+        self.llm = OpenAI(
+            base_url=llm_endpoint,
+            api_key=llm_api_key,
+            timeout=llm_timeout,  # llama.cpp on Power10 may need longer inference time
+        )
         self.model = llm_model
         self.max_tool_calls = max_tool_calls
 
@@ -165,7 +170,7 @@ class EnterpriseAgent:
                     tools=TOOLS,
                     tool_choice="auto",
                     temperature=0.1,
-                    max_tokens=4096,
+                    max_tokens=1024,
                 )
             except Exception as e:
                 logger.error(f"LLM call failed: {e}")

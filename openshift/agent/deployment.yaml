@@ -49,19 +49,23 @@ spec:
               value: "10"
             - name: MAX_QUERY_LENGTH
               value: "2000"
+            - name: LLM_TIMEOUT
+              value: "120"
           resources:
             requests:
-              cpu: 200m
-              memory: 256Mi
+              cpu: 250m
+              memory: 512Mi
             limits:
-              cpu: "1"
-              memory: 1Gi
+              cpu: "2"
+              memory: 2Gi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - name: tmp
               mountPath: /tmp
@@ -71,12 +75,15 @@ spec:
               port: 8080
             initialDelaySeconds: 15
             periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
           readinessProbe:
             httpGet:
               path: /health
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 5
       volumes:
         - name: tmp
           emptyDir:
