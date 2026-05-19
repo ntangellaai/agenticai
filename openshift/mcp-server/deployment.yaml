@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server
+  namespace: agenticai-demo
+  labels:
+    app.kubernetes.io/name: mcp-server
+    app.kubernetes.io/part-of: agenticai-demo
+    app.kubernetes.io/component: mcp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mcp-server
+        app.kubernetes.io/part-of: agenticai-demo
+        app.kubernetes.io/component: mcp-server
+    spec:
+      serviceAccountName: mcp-server-sa
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mcp-server
+          # Built from mcp-server/Dockerfile - pushed to internal registry
+          # Replace with your registry path after build
+          image: image-registry.openshift-image-registry.svc:5000/agenticai-demo/mcp-server:latest
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+              name: http
+          env:
+            - name: PGHOST
+              value: "postgres-svc"
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRESQL_DATABASE
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: MCP_READONLY_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: MCP_READONLY_PASSWORD
+            - name: MCP_SERVER_PORT
+              value: "3000"
+            - name: NODE_ENV
+              value: "production"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 10Mi

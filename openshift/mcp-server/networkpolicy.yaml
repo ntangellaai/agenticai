@@ -1,0 +1,44 @@
+# MCP Server: accept connections from agent, connect to PostgreSQL
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcp-server-policy
+  namespace: agenticai-demo
+  labels:
+    app.kubernetes.io/part-of: agenticai-demo
+    app.kubernetes.io/component: mcp-server
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-server
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only agent can connect to MCP server
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: agent
+      ports:
+        - port: 3000
+          protocol: TCP
+  egress:
+    # MCP server can connect to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+      ports:
+        - port: 5432
+          protocol: TCP
+    # DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-dns
+      ports:
+        - port: 5353
+          protocol: UDP
+        - port: 5353
+          protocol: TCP

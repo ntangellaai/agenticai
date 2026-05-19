@@ -1,0 +1,11 @@
+# Agent dependencies - all pure Python, verified ppc64le compatible
+# No native C extensions required
+# openai SDK used for OpenAI-compatible local LLM API (vLLM, TGI, etc.)
+
+flask==3.0.0
+gunicorn==21.2.0
+openai==1.12.0
+httpx==0.27.0
+pydantic==2.6.0
+python-dotenv==1.0.0
+mcp==1.0.0

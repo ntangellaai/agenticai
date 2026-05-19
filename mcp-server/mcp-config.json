@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "enterprise-postgres": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {
+        "PGHOST": "localhost",
+        "PGPORT": "5432",
+        "PGDATABASE": "enterprise_contracts",
+        "PGUSER": "mcp_readonly",
+        "PGPASSWORD": "",
+        "MCP_SERVER_PORT": "3000"
+      },
+      "transport": {
+        "type": "sse",
+        "url": "http://localhost:3000/sse"
+      }
+    }
+  }
+}

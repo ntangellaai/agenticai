@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent
+  namespace: agenticai-demo
+  labels:
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/part-of: agenticai-demo
+    app.kubernetes.io/component: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: agent
+        app.kubernetes.io/part-of: agenticai-demo
+        app.kubernetes.io/component: agent
+    spec:
+      serviceAccountName: agent-sa
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agent
+          # Built from agent/Dockerfile - pushed to internal registry
+          image: image-registry.openshift-image-registry.svc:5000/agenticai-demo/agent:latest
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+              name: http
+          env:
+            - name: MCP_SERVER_URL
+              value: "http://mcp-server-svc:3000"
+            - name: LLM_API_KEY
+              value: "not-required"
+            - name: LLM_ENDPOINT
+              # Local LLM in 'llm' namespace, service labeled 'llm-server'
+              value: "http://llm-server.llm.svc.cluster.local:8000/v1"
+            - name: LLM_MODEL
+              value: "ibm/granite-3-8b-instruct"
+            - name: AGENT_PORT
+              value: "8080"
+            - name: MAX_TOOL_CALLS
+              value: "10"
+            - name: MAX_QUERY_LENGTH
+              value: "2000"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 50Mi

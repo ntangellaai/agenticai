@@ -1,0 +1,55 @@
+# Agent: accept from OpenShift router, connect to MCP server and external LLM
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agent-policy
+  namespace: agenticai-demo
+  labels:
+    app.kubernetes.io/part-of: agenticai-demo
+    app.kubernetes.io/component: agent
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: agent
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from OpenShift router (ingress controller)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network.openshift.io/policy-group: ingress
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    # Agent can connect to MCP server
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mcp-server
+      ports:
+        - port: 3000
+          protocol: TCP
+    # Agent can connect to local LLM server in 'llm' namespace
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: llm
+          podSelector:
+            matchLabels:
+              app: llm-server
+      ports:
+        - port: 8000
+          protocol: TCP
+    # DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-dns
+      ports:
+        - port: 5353
+          protocol: UDP
+        - port: 5353
+          protocol: TCP

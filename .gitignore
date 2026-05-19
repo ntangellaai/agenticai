@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+mcp-server/node_modules/
+mcp-server/dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+agent/.venv/
+
+# Environment
+.env
+.env.local
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.tgz
+
+# Secrets (never commit real secrets)
+secrets/
+*.pem
+*.key
+*.crt
+
+# Temporary
+tmp/
+.tmp/

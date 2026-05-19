@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: agenticai-demo
+  labels:
+    app.kubernetes.io/part-of: agenticai-demo
+    app.kubernetes.io/component: database
+data:
+  # PostgreSQL configuration overrides
+  postgresql.conf.additions: |
+    # Performance
+    shared_buffers = 256MB
+    effective_cache_size = 512MB
+    work_mem = 16MB
+    maintenance_work_mem = 64MB
+    
+    # Security
+    ssl = off
+    log_statement = 'all'
+    log_connections = on
+    log_disconnections = on
+    log_line_prefix = '%t [%p] %u@%d '
+    
+    # Limits
+    max_connections = 50
+    statement_timeout = '60s'
+    idle_in_transaction_session_timeout = '120s'
+
+  # pg_hba.conf overrides - require scram-sha-256
+  pg_hba.conf.additions: |
+    # TYPE  DATABASE        USER            ADDRESS                 METHOD
+    host    enterprise_contracts  mcp_readonly    all                     scram-sha-256
+    host    enterprise_contracts  appuser         all                     scram-sha-256
+    host    all             all             all                     scram-sha-256
+
+  # Initialization script to create read-only user
+  init-readonly-user.sql: |
+    -- Create read-only user for MCP server
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'mcp_readonly') THEN
+            EXECUTE format('CREATE ROLE mcp_readonly WITH LOGIN PASSWORD %L',
+                          current_setting('app.mcp_password', true));
+        END IF;
+    END
+    $$;
+    
+    GRANT CONNECT ON DATABASE enterprise_contracts TO mcp_readonly;
+    GRANT USAGE ON SCHEMA public TO mcp_readonly;
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO mcp_readonly;
+    GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO mcp_readonly;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO mcp_readonly;
+    
+    REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public FROM mcp_readonly;
+    REVOKE CREATE ON SCHEMA public FROM mcp_readonly;
+    
+    ALTER ROLE mcp_readonly CONNECTION LIMIT 5;
+    ALTER ROLE mcp_readonly SET statement_timeout = '30s';
+    ALTER ROLE mcp_readonly SET lock_timeout = '5s';
