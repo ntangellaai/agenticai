@@ -28,9 +28,9 @@ This demo deploys an Agentic AI system on Red Hat OpenShift running on IBM Power
 
 ### 4. LLM Server (Cluster-Local, namespace: `llm`)
 - **Role:** Provides language model inference (e.g., Granite, Llama 3.1, Mixtral)
-- **Deployment:** llama.cpp compiled for IBM Power10 (ppc64le, MMA/VSX optimized), running in namespace `llm`, service `llm-server` on port 8000
+- **Deployment:** llama.cpp compiled for IBM Power10 (ppc64le, MMA/VSX optimized), running in namespace `llm`, service `llm-svc` on port 8080
 - **Interface:** OpenAI-compatible `/v1/chat/completions` API with tool/function calling support
-- **Security:** Cluster-internal only; accessed via service DNS (`llm-server.llm.svc.cluster.local:8000`); NetworkPolicy restricts access
+- **Security:** Cluster-internal only; accessed via service DNS (`llm-svc.llm.svc.cluster.local:8080`); NetworkPolicy restricts access
 - **Performance:** CPU-only inference on Power10; 120s timeout configured in agent for complex multi-tool queries
 
 ### 5. User Interface (Presentation Layer)
@@ -193,5 +193,5 @@ Internet
               │  PostgreSQL  │
               └──────────────┘
 
-Agent Pod ─── port 8000 ──▶ llm-server.llm.svc.cluster.local (namespace: llm)
+Agent Pod ─── port 8080 ──▶ llm-svc.llm.svc.cluster.local (namespace: llm)
 ```

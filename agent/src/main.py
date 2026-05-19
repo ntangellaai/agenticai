@@ -10,7 +10,7 @@ from agent import EnterpriseAgent
 
 # Configuration
 MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://localhost:3000")
-LLM_ENDPOINT = os.environ.get("LLM_ENDPOINT", "http://llm-server.llm.svc.cluster.local:8000/v1")
+LLM_ENDPOINT = os.environ.get("LLM_ENDPOINT", "http://llm-svc.llm.svc.cluster.local:8080/v1")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MODEL", "ibm/granite-3-8b-instruct")
 LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", "120"))

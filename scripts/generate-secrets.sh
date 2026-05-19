@@ -55,8 +55,8 @@ fi
 
 echo ""
 echo "--- LLM Configuration ---"
-echo "  Using local LLM server in namespace 'llm' (service: llm-server)"
-echo "  Endpoint: http://llm-server.llm.svc.cluster.local:8000/v1"
+echo "  Using local LLM server in namespace 'llm' (service: llm-svc)"
+echo "  Endpoint: http://llm-svc.llm.svc.cluster.local:8080/v1"
 echo "  No API key required for local LLM."
 echo ""
 if oc get secret llm-api-key -n $NAMESPACE > /dev/null 2>&1; then
@@ -65,7 +65,7 @@ if oc get secret llm-api-key -n $NAMESPACE > /dev/null 2>&1; then
 else
     oc create secret generic llm-api-key \
         --from-literal=LLM_API_KEY="not-required" \
-        --from-literal=LLM_ENDPOINT="http://llm-server.llm.svc.cluster.local:8000/v1" \
+        --from-literal=LLM_ENDPOINT="http://llm-svc.llm.svc.cluster.local:8080/v1" \
         -n $NAMESPACE
     echo "  ✅ llm-api-key created (local LLM)"
 fi

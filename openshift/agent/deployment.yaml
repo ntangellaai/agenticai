@@ -39,8 +39,8 @@ spec:
             - name: LLM_API_KEY
               value: "not-required"
             - name: LLM_ENDPOINT
-              # Local LLM in 'llm' namespace, service labeled 'llm-server'
-              value: "http://llm-server.llm.svc.cluster.local:8000/v1"
+              # Local LLM in 'llm' namespace, service: llm-svc
+              value: "http://llm-svc.llm.svc.cluster.local:8080/v1"
             - name: LLM_MODEL
               value: "ibm/granite-3-8b-instruct"
             - name: AGENT_PORT

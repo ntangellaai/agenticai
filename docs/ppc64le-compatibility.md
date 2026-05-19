@@ -112,7 +112,7 @@ oc exec <pod-name> -- uname -m
 |------|-------|
 | **Software** | `llama.cpp` compiled for ppc64le with Power10 optimizations |
 | **ppc64le** | ✅ Builds natively on Power10 — uses VSX/MMA SIMD extensions |
-| **Namespace** | `llm` (service: `llm-server`, port: 8000) |
+| **Namespace** | `llm` (service: `llm-svc`, port: 8080) |
 | **API** | OpenAI-compatible `/v1/chat/completions` with tool/function calling |
 | **Model format** | GGUF quantised models (Q4_K_M, Q5_K_M, Q6_K recommended) |
 

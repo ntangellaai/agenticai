@@ -76,7 +76,7 @@ else
     echo "  Creating llm-api-key secret (local LLM in 'llm' namespace)..."
     oc create secret generic llm-api-key \
         --from-literal=LLM_API_KEY="not-required" \
-        --from-literal=LLM_ENDPOINT="http://llm-server.llm.svc.cluster.local:8000/v1" \
+        --from-literal=LLM_ENDPOINT="http://llm-svc.llm.svc.cluster.local:8080/v1" \
         -n $NAMESPACE
 fi
 
@@ -192,15 +192,14 @@ echo ""
 # =============================================================================
 echo "=== Phase 5: MCP Server ==="
 
-echo "  Building MCP server image..."
-echo "  NOTE: You need to build and push the MCP server image first:"
-echo "    cd mcp-server/"
-echo "    oc new-build --binary --name=mcp-server -n $NAMESPACE"
-echo "    oc start-build mcp-server --from-dir=. -n $NAMESPACE --follow"
-echo ""
-
 echo "  Applying MCP server ConfigMap..."
 oc apply -f "$PROJECT_DIR/openshift/mcp-server/configmap.yaml"
+
+echo "  Building MCP server image (binary build)..."
+if ! oc get bc mcp-server -n $NAMESPACE > /dev/null 2>&1; then
+    oc new-build --binary --name=mcp-server --strategy=docker -n $NAMESPACE
+fi
+oc start-build mcp-server --from-dir="$PROJECT_DIR/mcp-server/" -n $NAMESPACE --follow
 
 echo "  Applying MCP server Deployment..."
 oc apply -f "$PROJECT_DIR/openshift/mcp-server/deployment.yaml"
@@ -211,7 +210,10 @@ oc apply -f "$PROJECT_DIR/openshift/mcp-server/service.yaml"
 echo "  Applying MCP server NetworkPolicy..."
 oc apply -f "$PROJECT_DIR/openshift/mcp-server/networkpolicy.yaml"
 
-echo "  ✅ Phase 5 complete (image build required)"
+echo "  Waiting for MCP server pod to be ready..."
+oc rollout status deployment/mcp-server -n $NAMESPACE --timeout=180s
+
+echo "  ✅ Phase 5 complete - MCP Server running"
 echo ""
 
 # =============================================================================
@@ -219,11 +221,11 @@ echo ""
 # =============================================================================
 echo "=== Phase 6: Agent ==="
 
-echo "  NOTE: Build and push the agent image first:"
-echo "    cd agent/"
-echo "    oc new-build --binary --name=agent -n $NAMESPACE"
-echo "    oc start-build agent --from-dir=. -n $NAMESPACE --follow"
-echo ""
+echo "  Building agent image (binary build)..."
+if ! oc get bc agent -n $NAMESPACE > /dev/null 2>&1; then
+    oc new-build --binary --name=agent --strategy=docker -n $NAMESPACE
+fi
+oc start-build agent --from-dir="$PROJECT_DIR/agent/" -n $NAMESPACE --follow
 
 echo "  Applying Agent Deployment..."
 oc apply -f "$PROJECT_DIR/openshift/agent/deployment.yaml"
@@ -237,28 +239,32 @@ oc apply -f "$PROJECT_DIR/openshift/agent/route.yaml"
 echo "  Applying Agent NetworkPolicy..."
 oc apply -f "$PROJECT_DIR/openshift/agent/networkpolicy.yaml"
 
-echo "  ✅ Phase 6 complete (image build required)"
+echo "  Waiting for Agent pod to be ready..."
+oc rollout status deployment/agent -n $NAMESPACE --timeout=180s
+
+echo "  ✅ Phase 6 complete - Agent running"
 echo ""
 
 # =============================================================================
 # Summary
 # =============================================================================
 echo "============================================"
-echo "  Deployment Summary"
+echo "  Deployment Complete!"
 echo "============================================"
 echo ""
 echo "  Namespace: $NAMESPACE"
-echo "  PostgreSQL: running (port 5432)"
-echo "  MCP Server: deployment applied (port 3000)"
-echo "  Agent: deployment applied (port 8080)"
+echo ""
+
+echo "  Pod status:"
+oc get pods -n $NAMESPACE -o wide
 echo ""
 
 ROUTE_URL=$(oc get route agent-route -n $NAMESPACE -o jsonpath='{.spec.host}' 2>/dev/null || echo "NOT YET AVAILABLE")
-echo "  Agent Route: https://$ROUTE_URL"
+echo "  Agent URL: https://$ROUTE_URL"
 echo ""
-echo "  Next steps:"
-echo "  1. Build MCP server: oc new-build --binary --name=mcp-server -n $NAMESPACE && oc start-build mcp-server --from-dir=mcp-server/ -n $NAMESPACE --follow"
-echo "  2. Build agent: oc new-build --binary --name=agent -n $NAMESPACE && oc start-build agent --from-dir=agent/ -n $NAMESPACE --follow"
-echo "  3. Configure LLM API key: oc set data secret/llm-api-key -n $NAMESPACE LLM_API_KEY=<your-key> LLM_ENDPOINT=<your-endpoint>"
-echo "  4. Run tests: ./tests/test-connectivity.sh"
+echo "  Quick verification:"
+echo "    curl -s https://$ROUTE_URL/health"
+echo ""
+echo "  Run tests:"
+echo "    $PROJECT_DIR/tests/test-connectivity.sh"
 echo ""

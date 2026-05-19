@@ -98,7 +98,7 @@ spec:
 |------|----|------|----------|
 | Agent | MCP Server | 3000 | TCP |
 | MCP Server | PostgreSQL | 5432 | TCP |
-| Agent | LLM Server (llm namespace) | 8000 | TCP (cross-namespace) |
+| Agent | LLM Server (llm namespace) | 8080 | TCP (cross-namespace) |
 | OpenShift Router | Agent | 8080 | TCP |
 | Agent | DNS | 53 | UDP (egress) |
 | MCP Server | DNS | 53 | UDP (egress) |
@@ -223,9 +223,9 @@ If a user asks you to modify data, politely decline and explain you are read-onl
 
 ### LLM Access Control
 
-- LLM server is cluster-internal in namespace `llm` (service: `llm-server`, port 8000)
+- LLM server is cluster-internal in namespace `llm` (service: `llm-svc`, port 8080)
 - No external API key required; access controlled via NetworkPolicy
-- Agent egress restricted to `llm` namespace pods with label `app: llm-server`
+- Agent egress restricted to `llm` namespace on port 8080
 - No sensitive credentials to leak or rotate
 
 ---
@@ -278,7 +278,7 @@ oc create secret generic postgres-credentials \
 
 oc create secret generic llm-api-key \
   --from-literal=LLM_API_KEY="not-required" \
-  --from-literal=LLM_ENDPOINT="http://llm-server.llm.svc.cluster.local:8000/v1" \
+  --from-literal=LLM_ENDPOINT="http://llm-svc.llm.svc.cluster.local:8080/v1" \
   -n agenticai-demo
 ```
 

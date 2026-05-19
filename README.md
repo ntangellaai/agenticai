@@ -46,7 +46,7 @@ This demo shows how an AI assistant can autonomously query enterprise contract, 
 | PostgreSQL | PostgreSQL 16 (Red Hat UBI image) | ✅ Verified |
 | MCP Server | Node.js (@modelcontextprotocol/server-postgres) or Go custom | ⚠️ Build from source |
 | Agent Orchestrator | Python (langchain/langgraph) or Go | ✅ With UBI base |
-| LLM Server | Local (namespace: `llm`, service: `llm-server:8000`) | Cluster-internal |
+| LLM Server | Local (namespace: `llm`, service: `llm-svc:8080`) | Cluster-internal |
 | UI | Streamlit or static HTML + JS | ✅ With UBI base |
 
 ## Project Structure

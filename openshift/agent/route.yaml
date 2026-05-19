@@ -15,7 +15,7 @@ metadata:
     # Disable HTTP/2 to avoid SSE buffering issues with HAProxy
     haproxy.router.openshift.io/disable_cookies: "true"
 spec:
-  host: agenticai-demo.apps.your-cluster.example.com
+  # host: auto-assigned by OpenShift based on cluster's app domain
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
