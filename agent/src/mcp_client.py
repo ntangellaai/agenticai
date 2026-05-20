@@ -20,39 +20,36 @@ class MCPClient:
         self.timeout = timeout
         self.session_id: str | None = None
         self._http = httpx.Client(timeout=timeout)
+        self._sse_response = None
 
     def _ensure_session(self) -> None:
         """Establish SSE session if not already connected."""
         if self.session_id:
             return
 
-        # Connect to SSE endpoint to get session ID
+        # Open SSE stream and hold it open; extract sessionId from the first endpoint event
         try:
-            with self._http.stream("GET", f"{self.server_url}/sse") as response:
-                for line in response.iter_lines():
-                    if line.startswith("data:"):
-                        # Parse session endpoint
-                        data = line[5:].strip()
-                        if "sessionId=" in data:
-                            self.session_id = data.split("sessionId=")[1].split("&")[0]
-                            logger.info(f"MCP session established: {self.session_id}")
-                            return
+            self._sse_response = self._http.send(
+                self._http.build_request("GET", f"{self.server_url}/sse"),
+                stream=True,
+            )
+            for line in self._sse_response.iter_lines():
+                if "sessionId=" in line:
+                    self.session_id = line.split("sessionId=")[1].split("&")[0].strip()
+                    logger.info(f"MCP session established: {self.session_id}")
+                    break
         except Exception as e:
-            logger.warning(f"SSE session setup failed: {e}")
-            # Fallback: try direct HTTP mode
-            self.session_id = "direct"
+            logger.error(f"SSE session setup failed: {e}")
+            raise RuntimeError(f"Cannot connect to MCP server at {self.server_url}: {e}")
 
     def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
-        """
-        Call an MCP tool and return the result as a string.
-        
-        Falls back to direct HTTP POST if SSE session fails.
-        """
-        # Try direct HTTP call (simpler for service-to-service)
+        """Call an MCP tool and return the result as a string."""
+        self._ensure_session()
+
         try:
             response = self._http.post(
                 f"{self.server_url}/messages",
-                params={"sessionId": self.session_id or "default"},
+                params={"sessionId": self.session_id},
                 json={
                     "jsonrpc": "2.0",
                     "id": str(uuid.uuid4()),
@@ -65,8 +62,13 @@ class MCPClient:
                 headers={"Content-Type": "application/json"},
             )
 
-            if response.status_code == 404 and not self.session_id:
-                # Need to establish session first
+            if response.status_code == 404:
+                # Session expired, re-establish and retry once
+                logger.warning("Session not found, re-establishing...")
+                self.session_id = None
+                if self._sse_response:
+                    self._sse_response.close()
+                    self._sse_response = None
                 self._ensure_session()
                 return self.call_tool(tool_name, arguments)
 
