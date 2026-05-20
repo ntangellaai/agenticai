@@ -43,7 +43,7 @@ spec:
               # Local LLM in 'llm' namespace, service: llm-svc
               value: "http://llm-svc.llm.svc.cluster.local:8080/v1"
             - name: LLM_MODEL
-              value: "ibm/granite-3-8b-instruct"
+              value: "ibm/granite-3.2-8b-instruct"
             - name: AGENT_PORT
               value: "8080"
             - name: MAX_TOOL_CALLS
@@ -51,7 +51,7 @@ spec:
             - name: MAX_QUERY_LENGTH
               value: "2000"
             - name: LLM_TIMEOUT
-              value: "240"
+              value: "360"
           resources:
             requests:
               cpu: 250m
