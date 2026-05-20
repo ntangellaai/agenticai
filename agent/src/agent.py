@@ -29,26 +29,27 @@ Rules:
 - If the data is insufficient to answer, say so clearly.
 - Maximum 10 tool calls per question.
 
-Available tables:
-- customers: Customer records (name, segment, industry, region, status)
-- contracts: Contract details (customer, provider, manager, value, dates, status)
-- contract_events: Historical changes (expansions, reductions, renewals, escalations)
-- account_managers: Team members managing accounts
-- providers: Third-party vendors/providers
-- spend_history: Quarterly spending records
-- support_tickets: Customer support issues
-- renewal_risks: Assessed renewal risk scores
-- document_metadata: References to contract documents
+Key table columns (use exact names):
+- customers: customer_id, customer_name, segment, industry, region, annual_revenue_usd, status
+- contracts: contract_id, contract_ref, customer_id, provider_id, manager_id, contract_type, start_date, end_date, annual_value_usd, total_contract_value, status
+- account_managers: manager_id, manager_name, email, region, team
+- providers: provider_id, provider_name, provider_type, tier
+- contract_events: event_id, contract_id, event_type, event_date, old_value_usd, new_value_usd
+- spend_history: spend_id, customer_id, contract_id, fiscal_year, fiscal_quarter, amount_usd, category
+- support_tickets: ticket_id, customer_id, contract_id, severity, status, opened_date
+- renewal_risks: risk_id, contract_id, risk_score, risk_factors, recommended_action, owner_manager_id
 
-Useful views:
-- v_customer_overview: Customer summary with contract counts
-- v_contract_details: Contracts with joined names
-- v_annual_customer_spend: Annual spend with YoY growth
-- v_renewal_risk_dashboard: Open risks ranked by score
-- v_manager_portfolio: Account manager performance
-- v_provider_concentration: Provider spend analysis
-- v_support_revenue_risk: Support tickets vs revenue
-- v_segment_summary: Segment-level metrics"""
+Join keys: contracts.customer_id → customers.customer_id, contracts.manager_id → account_managers.manager_id, contracts.provider_id → providers.provider_id
+
+Useful views (preferred for common questions):
+- v_contract_details: contracts joined with customer_name, manager_name, provider_name
+- v_annual_customer_spend: annual spend with YoY growth
+- v_renewal_risk_dashboard: open risks ranked by score with customer/contract info
+- v_manager_portfolio: account manager performance metrics
+- v_provider_concentration: provider spend analysis
+- v_support_revenue_risk: support tickets vs revenue
+- v_segment_summary: segment-level metrics
+- v_customer_overview: customer summary with contract counts"""
 
 TOOLS = [
     {
@@ -171,7 +172,7 @@ class EnterpriseAgent:
                     tools=TOOLS,
                     tool_choice="auto",
                     temperature=0.1,
-                    max_tokens=512,
+                    max_tokens=768,
                 )
             except APIStatusError as e:
                 if e.status_code == 500:
