@@ -46,4 +46,4 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/opt/app-root/deps
 ENV AGENT_PORT=8080
 
-CMD ["python3.11", "-m", "gunicorn", "--bind", "0.0.0.0:8080", "--workers", "4", "--timeout", "120", "main:app"]
+CMD ["python3.11", "-m", "gunicorn", "--bind", "0.0.0.0:8080", "--workers", "4", "--timeout", "300", "--graceful-timeout", "30", "main:app"]

@@ -28,33 +28,48 @@ class MCPClient:
         with httpx.stream("GET", f"{self.server_url}/sse",
                           timeout=self.timeout) as sse:
             session_id = None
+            buffer = ""
             for line in sse.iter_lines():
-                if "sessionId=" in line and session_id is None:
-                    session_id = line.split("sessionId=")[1].split("&")[0].strip()
-                    logger.info(f"MCP session: {session_id}")
+                logger.debug(f"SSE line: {line!r}")
 
-                    # POST the request now that we have the session ID
-                    post_resp = self._http.post(
-                        f"{self.server_url}/messages",
-                        params={"sessionId": session_id},
-                        json=payload,
-                        headers={"Content-Type": "application/json"},
-                    )
-                    if post_resp.status_code not in (200, 202):
-                        raise RuntimeError(
-                            f"MCP POST returned {post_resp.status_code}: {post_resp.text[:200]}"
+                # Strip SSE field prefix for uniform handling
+                raw = line
+                if line.startswith("data:"):
+                    raw = line[5:].strip()
+                elif line.startswith("event:") or line == "":
+                    continue
+
+                # First meaningful line: endpoint event with sessionId
+                if session_id is None:
+                    if "sessionId=" in raw:
+                        session_id = raw.split("sessionId=")[1].split("&")[0].split()[0].strip()
+                        logger.info(f"MCP session: {session_id}")
+
+                        post_resp = self._http.post(
+                            f"{self.server_url}/messages",
+                            params={"sessionId": session_id},
+                            json=payload,
+                            headers={"Content-Type": "application/json"},
                         )
+                        if post_resp.status_code not in (200, 202):
+                            raise RuntimeError(
+                                f"MCP POST returned {post_resp.status_code}: {post_resp.text[:200]}"
+                            )
+                    continue
 
-                elif line.startswith("data:"):
-                    data = line[5:].strip()
-                    if not data:
-                        continue
-                    try:
-                        msg = json.loads(data)
-                        if str(msg.get("id")) == req_id:
-                            return msg
-                    except json.JSONDecodeError:
-                        pass
+                # Subsequent lines: JSON-RPC response
+                if not raw:
+                    continue
+
+                buffer += raw
+                try:
+                    msg = json.loads(buffer)
+                    buffer = ""
+                    if str(msg.get("id")) == req_id:
+                        return msg
+                except json.JSONDecodeError:
+                    # Incomplete JSON — accumulate more lines
+                    pass
 
         raise RuntimeError("SSE stream closed before receiving response")
 
