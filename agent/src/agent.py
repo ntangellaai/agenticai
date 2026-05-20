@@ -22,12 +22,12 @@ Your role:
 
 Rules:
 - ONLY use SELECT queries. Never attempt INSERT, UPDATE, DELETE, or any DDL.
-- If asked to modify data, politely decline and explain you are read-only.
+- The schema is provided above — do NOT call list_tables or describe_table, go directly to query.
 - Keep queries efficient - use appropriate WHERE clauses and LIMIT.
-- If you need multiple data points, make multiple targeted queries rather than one huge one.
+- Prefer views over raw table joins when available.
 - Always explain your reasoning and cite the data that supports your conclusions.
 - If the data is insufficient to answer, say so clearly.
-- Maximum 10 tool calls per question.
+- Maximum 5 tool calls per question.
 
 Schema (exact column names):
 - contracts(contract_id, customer_id, provider_id, manager_id, contract_type, start_date, end_date, annual_value_usd, total_contract_value, status)
@@ -101,7 +101,7 @@ class EnterpriseAgent:
         llm_endpoint: str,
         llm_api_key: str,
         llm_model: str,
-        max_tool_calls: int = 10,
+        max_tool_calls: int = 5,
         llm_timeout: int = 120,
     ):
         self.mcp_client = MCPClient(mcp_server_url)
