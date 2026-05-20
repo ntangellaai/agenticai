@@ -14,13 +14,12 @@ logger = logging.getLogger("agent.core")
 SYSTEM_PROMPT = """You are a SQL analyst. Answer business questions by querying a PostgreSQL database using the query tool. Always call query immediately with a SQL SELECT statement. Never explain before querying.
 
 ALWAYS USE THESE VIEWS (do not join raw tables):
-- v_manager_portfolio(manager_name, total_contract_value, active_contracts, avg_contract_value)
-- v_provider_concentration(provider_name, total_value, contract_count)
-- v_contract_details(contract_ref, customer_name, manager_name, provider_name, annual_value_usd, status)
-- v_renewal_risk_dashboard(customer_name, contract_ref, risk_score, recommended_action)
-- v_annual_customer_spend(customer_name, fiscal_year, total_spend, yoy_growth_pct)
-- v_segment_summary(segment, total_value, customer_count)
-- v_customer_overview(customer_name, segment, active_contracts, total_value)
+- v_manager_portfolio(manager_name, region, team, total_contracts, total_customers, managed_revenue, avg_contract_value, pending_renewals, open_risks)
+- v_provider_concentration(provider_name, provider_type, tier, contract_count, customer_count, total_annual_value, pct_of_total_spend)
+- v_contract_details(contract_ref, customer_name, segment, provider_name, manager_name, contract_type, annual_value_usd, total_contract_value, status, days_until_expiry)
+- v_renewal_risk_dashboard(contract_ref, customer_name, segment, annual_value_usd, days_until_expiry, risk_score, risk_factors, recommended_action, manager_name)
+- v_annual_customer_spend(customer_name, segment, fiscal_year, annual_spend, yoy_growth_pct)
+- v_customer_overview(customer_name, segment, industry, region, total_contracts, active_contracts, total_active_annual_value)
 - v_support_revenue_risk(customer_name, open_tickets, critical_tickets, total_contract_value)
 
 Raw tables only if views insufficient:
@@ -31,13 +30,13 @@ Raw tables only if views insufficient:
 
 Examples:
 Q: Which account manager owns the most revenue?
-A: query("SELECT manager_name, total_contract_value FROM v_manager_portfolio ORDER BY total_contract_value DESC LIMIT 1")
+A: query("SELECT manager_name, managed_revenue FROM v_manager_portfolio ORDER BY managed_revenue DESC LIMIT 1")
 
 Q: Which provider has the highest contract value?
-A: query("SELECT provider_name, total_value FROM v_provider_concentration ORDER BY total_value DESC LIMIT 1")
+A: query("SELECT provider_name, total_annual_value FROM v_provider_concentration ORDER BY total_annual_value DESC LIMIT 1")
 
 Q: Top 5 customers by spend?
-A: query("SELECT customer_name, total_spend FROM v_annual_customer_spend WHERE fiscal_year=2024 ORDER BY total_spend DESC LIMIT 5")
+A: query("SELECT customer_name, annual_spend FROM v_annual_customer_spend WHERE fiscal_year=2024 ORDER BY annual_spend DESC LIMIT 5")
 
 After getting results, give a concise business answer."""
 
@@ -184,6 +183,7 @@ class EnterpriseAgent:
                 logger.info(f"Tool call: {fn_name}({json.dumps(fn_args)[:200]})")
 
                 result = self._call_tool(fn_name, fn_args)
+                logger.info(f"Tool result: {result[:300]}")
 
                 tool_calls_log.append({
                     "tool": fn_name,
