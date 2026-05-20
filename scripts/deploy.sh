@@ -226,11 +226,16 @@ echo "=== Phase 5: MCP Server ==="
 echo "  Applying MCP server ConfigMap..."
 oc apply -f "$PROJECT_DIR/openshift/mcp-server/configmap.yaml"
 
-echo "  Building MCP server image (in-cluster build)..."
-if ! oc get bc mcp-server -n $NAMESPACE > /dev/null 2>&1; then
-    oc new-build --binary --name=mcp-server --strategy=docker -n $NAMESPACE
-fi
-oc start-build mcp-server --from-dir="$PROJECT_DIR/mcp-server/" -n $NAMESPACE --follow
+echo "  Building MCP server image (bastion podman build -> internal registry)..."
+REGISTRY_ROUTE=$(oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}' 2>/dev/null || echo "default-route-openshift-image-registry.apps.$(oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}' 2>/dev/null)")
+TOKEN=$(oc whoami -t)
+podman login "$REGISTRY_ROUTE" --username "$(oc whoami)" --password "$TOKEN" --tls-verify=false
+# Ensure ImageStream exists so the push creates a tracked tag
+oc create imagestream mcp-server -n $NAMESPACE 2>/dev/null || true
+MCP_IMAGE="$REGISTRY_ROUTE/$NAMESPACE/mcp-server:latest"
+podman build --platform linux/ppc64le --tag "$MCP_IMAGE" "$PROJECT_DIR/mcp-server/"
+podman push "$MCP_IMAGE" --tls-verify=false
+echo "  ✅ mcp-server image pushed"
 
 echo "  Applying MCP server Deployment..."
 oc apply -f "$PROJECT_DIR/openshift/mcp-server/deployment.yaml"
@@ -252,11 +257,12 @@ echo ""
 # =============================================================================
 echo "=== Phase 6: Agent ==="
 
-echo "  Building agent image (in-cluster build)..."
-if ! oc get bc agent -n $NAMESPACE > /dev/null 2>&1; then
-    oc new-build --binary --name=agent --strategy=docker -n $NAMESPACE
-fi
-oc start-build agent --from-dir="$PROJECT_DIR/agent/" -n $NAMESPACE --follow
+echo "  Building agent image (bastion podman build -> internal registry)..."
+oc create imagestream agent -n $NAMESPACE 2>/dev/null || true
+AGENT_IMAGE="$REGISTRY_ROUTE/$NAMESPACE/agent:latest"
+podman build --platform linux/ppc64le --tag "$AGENT_IMAGE" "$PROJECT_DIR/agent/"
+podman push "$AGENT_IMAGE" --tls-verify=false
+echo "  ✅ agent image pushed"
 
 echo "  Applying Agent Deployment..."
 oc apply -f "$PROJECT_DIR/openshift/agent/deployment.yaml"
