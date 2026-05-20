@@ -20,7 +20,8 @@ ALWAYS USE THESE VIEWS (do not join raw tables):
 - v_renewal_risk_dashboard(contract_ref, customer_name, segment, annual_value_usd, days_until_expiry, risk_score, risk_factors, recommended_action, manager_name)
 - v_annual_customer_spend(customer_name, segment, fiscal_year, annual_spend, yoy_growth_pct)
 - v_customer_overview(customer_name, segment, industry, region, total_contracts, active_contracts, total_active_annual_value)
-- v_support_revenue_risk(customer_name, open_tickets, critical_tickets, total_contract_value)
+- v_support_revenue_risk(customer_name, segment, active_revenue, total_tickets, high_sev_tickets, open_tickets, avg_resolution_hours)
+- v_segment_summary(segment, customer_count, active_contracts, segment_revenue, avg_contract_value, open_risks)
 
 Raw tables only if views insufficient:
 - contracts(contract_id, customer_id, provider_id, manager_id, annual_value_usd, total_contract_value, status, start_date, end_date)
@@ -37,6 +38,9 @@ A: query("SELECT provider_name, total_annual_value FROM v_provider_concentration
 
 Q: Top 5 customers by spend?
 A: query("SELECT customer_name, annual_spend FROM v_annual_customer_spend WHERE fiscal_year=2024 ORDER BY annual_spend DESC LIMIT 5")
+
+Q: Which customers have high support tickets but also high revenue?
+A: query("SELECT customer_name, active_revenue, open_tickets, high_sev_tickets FROM v_support_revenue_risk ORDER BY active_revenue DESC LIMIT 10")
 
 After getting results, give a concise business answer."""
 
