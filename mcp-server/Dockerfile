@@ -10,7 +10,7 @@ WORKDIR /opt/app-root/src
 
 # Copy package files first for better layer caching
 COPY package.json package-lock.json* ./
-RUN npm ci --production=false && npm cache clean --force
+RUN npm install && npm cache clean --force
 
 # Copy source and build
 COPY tsconfig.json ./
@@ -19,7 +19,7 @@ RUN npm run build
 
 # Install only production dependencies in a clean directory
 RUN mkdir /prod && cp package.json /prod/ && \
-    cd /prod && npm ci --omit=dev && npm cache clean --force && \
+    cd /prod && npm install --omit=dev && npm cache clean --force && \
     rm -rf /root/.npm
 
 # Stage 2: Production runtime (minimal image ~60MB base)
