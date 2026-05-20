@@ -16,7 +16,7 @@ SELECT
     qtr.fiscal_quarter,
     -- Quarterly amount = annual_value / 4, with some variance (+/- 10%)
     round(
-        (ct.annual_value_usd / 4.0) * (0.9 + random() * 0.2),
+        ((ct.annual_value_usd / 4.0) * (0.9 + random() * 0.2))::numeric,
         2
     ) AS amount_usd,
     -- Category matches contract type

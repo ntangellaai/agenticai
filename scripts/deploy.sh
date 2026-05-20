@@ -44,6 +44,31 @@ oc apply -f "$PROJECT_DIR/openshift/limitrange.yaml"
 echo "  ✅ Phase 1 complete"
 echo ""
 
+# Ensure build pods can pull from registry.redhat.io
+# The cluster global pull secret (openshift-config/pull-secret) is already used by nodes,
+# but build pods in custom namespaces need it copied in and linked to the builder SA.
+echo "--- Linking registry pull secret to builder service account ---"
+if ! oc get secret registry-redhat-pull-secret -n $NAMESPACE > /dev/null 2>&1; then
+    echo "  Copying global pull secret into namespace..."
+    oc get secret pull-secret -n openshift-config -o json \
+        | jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp,.metadata.annotations,.metadata.managedFields) | .metadata.name = "registry-redhat-pull-secret"' \
+        | oc apply -n $NAMESPACE -f -
+fi
+oc secrets link builder registry-redhat-pull-secret --for=pull -n $NAMESPACE
+echo "  ✅ Pull secret linked to builder SA"
+echo ""
+
+# Grant image-puller role to all service accounts in the namespace
+# so deployment pods can pull from the internal registry after build
+echo "--- Granting image-puller role to service accounts ---"
+for sa in default mcp-server-sa agent-sa; do
+    oc policy add-role-to-user system:image-puller \
+        system:serviceaccount:$NAMESPACE:$sa \
+        -n $NAMESPACE 2>/dev/null || true
+done
+echo "  ✅ image-puller role granted"
+echo ""
+
 # =============================================================================
 # Phase 2: Secrets (generate random passwords)
 # =============================================================================
@@ -119,35 +144,35 @@ PG_POD=$(oc get pod -n $NAMESPACE -l app.kubernetes.io/name=postgres -o jsonpath
 echo "  Loading schema..."
 oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/schema.sql"
 
-echo "  Loading Batch 1: Reference data (managers + providers)..."
-oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-1-reference.sql"
+# Check if data is already loaded (idempotency guard)
+CUSTOMER_COUNT=$(oc exec $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts -tAc "SELECT COUNT(*) FROM customers;" 2>/dev/null || echo "0")
+if [ "$CUSTOMER_COUNT" -gt "0" ]; then
+    echo "  Data already loaded ($CUSTOMER_COUNT customers found), skipping seed data..."
+else
+    echo "  Loading Batch 1: Reference data (managers + providers)..."
+    oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-1-reference.sql"
 
-echo "  Loading Batch 2: Customers (~200 records)..."
-oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-2-customers.sql"
+    echo "  Loading Batch 2: Customers (~200 records)..."
+    oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-2-customers.sql"
 
-echo "  Loading Batch 3: Contracts (~2000 records)..."
-oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-3-contracts.sql"
+    echo "  Loading Batch 3: Contracts (~2000 records)..."
+    oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-3-contracts.sql"
 
-echo "  Loading Batch 4: Contract Events (~3000-6000 records)..."
-oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-4-events.sql"
+    echo "  Loading Batch 4: Contract Events (~3000-6000 records)..."
+    oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-4-events.sql"
 
-echo "  Loading Batch 5: Spend History (~8000-12000 records)..."
-oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-5-spend.sql"
+    echo "  Loading Batch 5: Spend History (~8000-12000 records)..."
+    oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-5-spend.sql"
 
-echo "  Loading Batch 6: Support Tickets (~2000 records)..."
-oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-6-tickets.sql"
+    echo "  Loading Batch 6: Support Tickets (~2000 records)..."
+    oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-6-tickets.sql"
 
-echo "  Loading Batch 7: Renewal Risks + Documents (~1000 records)..."
-oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-7-risks-docs.sql"
-
-echo "  Creating views..."
-oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/views.sql"
-
-echo "  Creating indexes..."
-oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/indexes.sql"
+    echo "  Loading Batch 7: Renewal Risks + Documents (~1000 records)..."
+    oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/seed-data-batch-7-risks-docs.sql"
+fi
 
 echo "  Setting up read-only user..."
-# Get the MCP password from secret
+# Get the MCP password from secret — must be created BEFORE views (views grant to this role)
 MCP_READONLY_PW=$(oc get secret postgres-credentials -n $NAMESPACE -o jsonpath='{.data.MCP_READONLY_PASSWORD}' | base64 -d)
 oc exec $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts -c "
 DO \$\$
@@ -168,6 +193,12 @@ REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public FROM mcp_
 ALTER ROLE mcp_readonly CONNECTION LIMIT 5;
 ALTER ROLE mcp_readonly SET statement_timeout = '30s';
 "
+
+echo "  Creating views..."
+oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/views.sql"
+
+echo "  Creating indexes..."
+oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts < "$PROJECT_DIR/database/indexes.sql"
 
 echo "  Validating data load..."
 oc exec -i $PG_POD -n $NAMESPACE -- psql -U postgres -d enterprise_contracts -c "
@@ -195,7 +226,7 @@ echo "=== Phase 5: MCP Server ==="
 echo "  Applying MCP server ConfigMap..."
 oc apply -f "$PROJECT_DIR/openshift/mcp-server/configmap.yaml"
 
-echo "  Building MCP server image (binary build)..."
+echo "  Building MCP server image (in-cluster build)..."
 if ! oc get bc mcp-server -n $NAMESPACE > /dev/null 2>&1; then
     oc new-build --binary --name=mcp-server --strategy=docker -n $NAMESPACE
 fi
@@ -221,7 +252,7 @@ echo ""
 # =============================================================================
 echo "=== Phase 6: Agent ==="
 
-echo "  Building agent image (binary build)..."
+echo "  Building agent image (in-cluster build)..."
 if ! oc get bc agent -n $NAMESPACE > /dev/null 2>&1; then
     oc new-build --binary --name=agent --strategy=docker -n $NAMESPACE
 fi
