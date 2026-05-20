@@ -133,12 +133,15 @@ class EnterpriseAgent:
                 messages = messages[:2] + messages[-6:]
             iterations += 1
 
+            # Force first call to use a tool — prevents hallucination without querying
+            tool_choice = "required" if iterations == 1 else "auto"
+
             try:
                 response = self.llm.chat.completions.create(
                     model=self.model,
                     messages=messages,
                     tools=TOOLS,
-                    tool_choice="auto",
+                    tool_choice=tool_choice,
                     temperature=0.1,
                     max_tokens=768,
                 )
