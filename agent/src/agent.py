@@ -6,7 +6,7 @@ import json
 import logging
 import re
 from typing import Any
-from openai import OpenAI  # Used for OpenAI-compatible API (local LLM via vLLM/TGI)
+from openai import OpenAI, APIStatusError  # Used for OpenAI-compatible API (local LLM via vLLM/TGI)
 from mcp_client import MCPClient
 
 logger = logging.getLogger("agent.core")
@@ -116,6 +116,7 @@ class EnterpriseAgent:
             base_url=llm_endpoint,
             api_key=llm_api_key,
             timeout=llm_timeout,  # llama.cpp on Power10 may need longer inference time
+            max_retries=0,  # Don't retry on 500 — llama.cpp returns 500 when slots are full
         )
         self.model = llm_model
         self.max_tool_calls = max_tool_calls
@@ -170,8 +171,22 @@ class EnterpriseAgent:
                     tools=TOOLS,
                     tool_choice="auto",
                     temperature=0.1,
-                    max_tokens=1024,
+                    max_tokens=512,
                 )
+            except APIStatusError as e:
+                if e.status_code == 500:
+                    logger.error(f"LLM busy (500): {e}")
+                    return {
+                        "answer": "The language model is currently busy processing another request. Please wait a moment and try again.",
+                        "tool_calls": tool_calls_log,
+                        "error": "LLM server busy",
+                    }
+                logger.error(f"LLM call failed: {e}")
+                return {
+                    "answer": "I'm unable to process your question right now. The language model service may be unavailable.",
+                    "tool_calls": tool_calls_log,
+                    "error": str(e),
+                }
             except Exception as e:
                 logger.error(f"LLM call failed: {e}")
                 return {
