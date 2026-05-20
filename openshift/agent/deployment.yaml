@@ -29,6 +29,7 @@ spec:
         - name: agent
           # Built from agent/Dockerfile - pushed to internal registry
           image: image-registry.openshift-image-registry.svc:5000/agenticai-demo/agent:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               protocol: TCP
