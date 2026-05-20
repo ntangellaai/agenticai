@@ -42,6 +42,12 @@ A: query("SELECT customer_name, annual_spend FROM v_annual_customer_spend WHERE 
 Q: Which customers have high support tickets but also high revenue?
 A: query("SELECT customer_name, active_revenue, open_tickets, high_sev_tickets FROM v_support_revenue_risk ORDER BY active_revenue DESC LIMIT 10")
 
+Q: What is the revenue for customer X?
+A: query("SELECT customer_name, total_active_annual_value FROM v_customer_overview WHERE customer_name ILIKE '%X%'")
+
+Q: What contracts does customer X have?
+A: query("SELECT contract_ref, provider_name, annual_value_usd, status, days_until_expiry FROM v_contract_details WHERE customer_name ILIKE '%X%'")
+
 After getting results, give a concise business answer."""
 
 TOOLS = [
