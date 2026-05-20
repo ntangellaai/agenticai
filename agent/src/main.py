@@ -115,7 +115,13 @@ UI_TEMPLATE = """
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ question: q })
                 });
-                const data = await res.json();
+                let data;
+                const text = await res.text();
+                try { data = JSON.parse(text); } catch(_) {
+                    data = { answer: res.status === 504 || res.status === 502
+                        ? 'The request timed out. The language model is busy — please wait 30 seconds and try again.'
+                        : 'Unexpected server error (status ' + res.status + '). Please try again.' };
+                }
                 let html = '<div class="message assistant"><div class="role">Assistant</div>';
                 html += '<div class="content">' + escapeHtml(data.answer || data.error || 'No response') + '</div>';
                 if (data.tool_calls && data.tool_calls.length > 0) {
@@ -124,7 +130,7 @@ UI_TEMPLATE = """
                 html += '</div>';
                 chat.innerHTML += html;
             } catch (e) {
-                chat.innerHTML += '<div class="message assistant"><div class="role">Error</div><div class="content">Failed to get response: ' + e.message + '</div></div>';
+                chat.innerHTML += '<div class="message assistant"><div class="role">Error</div><div class="content">Network error: ' + e.message + '</div></div>';
             }
 
             btn.disabled = false;

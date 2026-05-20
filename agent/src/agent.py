@@ -29,27 +29,19 @@ Rules:
 - If the data is insufficient to answer, say so clearly.
 - Maximum 10 tool calls per question.
 
-Key table columns (use exact names):
-- customers: customer_id, customer_name, segment, industry, region, annual_revenue_usd, status
-- contracts: contract_id, contract_ref, customer_id, provider_id, manager_id, contract_type, start_date, end_date, annual_value_usd, total_contract_value, status
-- account_managers: manager_id, manager_name, email, region, team
-- providers: provider_id, provider_name, provider_type, tier
-- contract_events: event_id, contract_id, event_type, event_date, old_value_usd, new_value_usd
-- spend_history: spend_id, customer_id, contract_id, fiscal_year, fiscal_quarter, amount_usd, category
-- support_tickets: ticket_id, customer_id, contract_id, severity, status, opened_date
-- renewal_risks: risk_id, contract_id, risk_score, risk_factors, recommended_action, owner_manager_id
+Schema (exact column names):
+- contracts(contract_id, customer_id, provider_id, manager_id, contract_type, start_date, end_date, annual_value_usd, total_contract_value, status)
+- customers(customer_id, customer_name, segment, industry, region, annual_revenue_usd, status)
+- account_managers(manager_id, manager_name, region, team)
+- providers(provider_id, provider_name, provider_type, tier)
+- spend_history(customer_id, contract_id, fiscal_year, fiscal_quarter, amount_usd, category)
+- contract_events(contract_id, event_type, event_date, old_value_usd, new_value_usd)
+- support_tickets(customer_id, contract_id, severity, status, opened_date)
+- renewal_risks(contract_id, risk_score, owner_manager_id)
 
-Join keys: contracts.customer_id → customers.customer_id, contracts.manager_id → account_managers.manager_id, contracts.provider_id → providers.provider_id
+Joins: contracts.customer_id=customers.customer_id, contracts.manager_id=account_managers.manager_id, contracts.provider_id=providers.provider_id
 
-Useful views (preferred for common questions):
-- v_contract_details: contracts joined with customer_name, manager_name, provider_name
-- v_annual_customer_spend: annual spend with YoY growth
-- v_renewal_risk_dashboard: open risks ranked by score with customer/contract info
-- v_manager_portfolio: account manager performance metrics
-- v_provider_concentration: provider spend analysis
-- v_support_revenue_risk: support tickets vs revenue
-- v_segment_summary: segment-level metrics
-- v_customer_overview: customer summary with contract counts"""
+Prefer these views: v_contract_details, v_manager_portfolio, v_renewal_risk_dashboard, v_annual_customer_spend, v_provider_concentration, v_segment_summary, v_customer_overview, v_support_revenue_risk"""
 
 TOOLS = [
     {
@@ -163,6 +155,9 @@ class EnterpriseAgent:
         iterations = 0
 
         while iterations < self.max_tool_calls:
+            # Trim history: keep system + user message + last 6 messages to fit in 2048 ctx
+            if len(messages) > 8:
+                messages = messages[:2] + messages[-6:]
             iterations += 1
 
             try:

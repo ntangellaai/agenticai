@@ -50,7 +50,7 @@ spec:
             - name: MAX_QUERY_LENGTH
               value: "2000"
             - name: LLM_TIMEOUT
-              value: "120"
+              value: "240"
           resources:
             requests:
               cpu: 250m
