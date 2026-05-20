@@ -229,7 +229,7 @@ oc apply -f "$PROJECT_DIR/openshift/mcp-server/configmap.yaml"
 echo "  Building MCP server image (bastion podman build -> internal registry)..."
 REGISTRY_ROUTE=$(oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}' 2>/dev/null || echo "default-route-openshift-image-registry.apps.$(oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}' 2>/dev/null)")
 TOKEN=$(oc whoami -t)
-podman login "$REGISTRY_ROUTE" --username "$(oc whoami)" --password "$TOKEN" --tls-verify=false
+podman login "$REGISTRY_ROUTE" --username "unused" --password "$TOKEN" --tls-verify=false
 # Ensure ImageStream exists so the push creates a tracked tag
 oc create imagestream mcp-server -n $NAMESPACE 2>/dev/null || true
 MCP_IMAGE="$REGISTRY_ROUTE/$NAMESPACE/mcp-server:latest"

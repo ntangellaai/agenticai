@@ -42,7 +42,7 @@ oc get namespace "$NAMESPACE" > /dev/null 2>&1 || { echo "ERROR: Namespace '$NAM
 # Log in to the internal registry using the current OCP token
 echo "--- Logging into internal registry ---"
 TOKEN=$(oc whoami -t)
-podman login "$ROUTE" --username "$(oc whoami)" --password "$TOKEN" --tls-verify=false
+podman login "$ROUTE" --username "unused" --password "$TOKEN" --tls-verify=false
 echo ""
 
 # =============================================================================
