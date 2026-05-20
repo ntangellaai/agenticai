@@ -51,8 +51,11 @@ Prefer these views (already have joins built in):
 - v_customer_overview: customer_name, segment, active_contracts, total_value
 - v_support_revenue_risk: customer_name, open_tickets, critical_tickets, total_contract_value
 
-Example — account manager with most revenue:
-SELECT manager_name, total_contract_value FROM v_manager_portfolio ORDER BY total_contract_value DESC LIMIT 1;"""
+Examples (always use views for these patterns):
+- Account manager with most revenue: SELECT manager_name, total_contract_value FROM v_manager_portfolio ORDER BY total_contract_value DESC LIMIT 1;
+- Provider with highest contract value: SELECT provider_name, total_value FROM v_provider_concentration ORDER BY total_value DESC LIMIT 1;
+- Top customers by spend: SELECT customer_name, total_spend FROM v_annual_customer_spend WHERE fiscal_year=2024 ORDER BY total_spend DESC LIMIT 5;
+- Highest renewal risk: SELECT customer_name, contract_ref, risk_score FROM v_renewal_risk_dashboard ORDER BY risk_score DESC LIMIT 5;"""
 
 TOOLS = [
     {
