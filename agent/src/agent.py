@@ -41,7 +41,18 @@ Schema (exact column names):
 
 Joins: contracts.customer_id=customers.customer_id, contracts.manager_id=account_managers.manager_id, contracts.provider_id=providers.provider_id
 
-Prefer these views: v_contract_details, v_manager_portfolio, v_renewal_risk_dashboard, v_annual_customer_spend, v_provider_concentration, v_segment_summary, v_customer_overview, v_support_revenue_risk"""
+Prefer these views (already have joins built in):
+- v_manager_portfolio: manager_name, total_contract_value, active_contracts, avg_contract_value
+- v_contract_details: contract_ref, customer_name, manager_name, provider_name, annual_value_usd, status
+- v_renewal_risk_dashboard: customer_name, contract_ref, risk_score, recommended_action
+- v_annual_customer_spend: customer_name, fiscal_year, total_spend, yoy_growth_pct
+- v_provider_concentration: provider_name, total_value, contract_count
+- v_segment_summary: segment, total_value, customer_count
+- v_customer_overview: customer_name, segment, active_contracts, total_value
+- v_support_revenue_risk: customer_name, open_tickets, critical_tickets, total_contract_value
+
+Example — account manager with most revenue:
+SELECT manager_name, total_contract_value FROM v_manager_portfolio ORDER BY total_contract_value DESC LIMIT 1;"""
 
 TOOLS = [
     {
@@ -58,34 +69,6 @@ TOOLS = [
                     }
                 },
                 "required": ["sql"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "list_tables",
-            "description": "List all available tables and views with descriptions",
-            "parameters": {
-                "type": "object",
-                "properties": {}
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "describe_table",
-            "description": "Get column names, types for a specific table",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "table": {
-                        "type": "string",
-                        "description": "Table or view name"
-                    }
-                },
-                "required": ["table"]
             }
         }
     }
