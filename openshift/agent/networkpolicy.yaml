@@ -24,13 +24,20 @@ spec:
         - port: 8080
           protocol: TCP
   egress:
-    # Agent can connect to MCP server
+    # Agent can connect to MCP servers (enterprise and UK)
     - to:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: mcp-server
       ports:
         - port: 3000
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mcp-server-seuk
+      ports:
+        - port: 3001
           protocol: TCP
     # Agent can connect to local LLM server in 'llm' namespace
     - to:

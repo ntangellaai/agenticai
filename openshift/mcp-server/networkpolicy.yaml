@@ -1,4 +1,5 @@
 # MCP Server: accept connections from agent, connect to PostgreSQL
+# Updated to support both mcp-server (port 3000) and mcp-server-seuk (port 3001)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -9,19 +10,25 @@ metadata:
     app.kubernetes.io/component: mcp-server
 spec:
   podSelector:
-    matchLabels:
-      app.kubernetes.io/name: mcp-server
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - mcp-server
+          - mcp-server-seuk
   policyTypes:
     - Ingress
     - Egress
   ingress:
-    # Only agent can connect to MCP server
+    # Agent can connect to MCP servers on both ports
     - from:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: agent
       ports:
         - port: 3000
+          protocol: TCP
+        - port: 3001
           protocol: TCP
   egress:
     # MCP server can connect to PostgreSQL
