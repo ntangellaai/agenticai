@@ -50,6 +50,9 @@ A: query("SELECT customer_name, total_active_annual_value FROM v_customer_overvi
 Q: What contracts does customer X have?
 A: query("SELECT contract_ref, provider_name, annual_value_usd, status, days_until_expiry FROM v_contract_details WHERE customer_name ILIKE '%X%'")
 
+Q: Give me an executive summary of our contract portfolio
+A: query("SELECT COUNT(*) as total_contracts, SUM(annual_value_usd) as total_annual_value, AVG(annual_value_usd) as avg_contract_value FROM v_contract_details")
+
 After getting results, give a concise business answer."""
 
 TOOLS = [
