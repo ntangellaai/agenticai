@@ -10,6 +10,7 @@ from agent import EnterpriseAgent
 
 # Configuration
 MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://localhost:3000")
+MCP_SERVER_SEUK_URL = os.environ.get("MCP_SERVER_SEUK_URL", "http://mcp-server-seuk-svc:3001")
 LLM_ENDPOINT = os.environ.get("LLM_ENDPOINT", "http://llm-svc.llm.svc.cluster.local:8080/v1")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MODEL", "ibm/granite-3-8b-instruct")
@@ -30,6 +31,7 @@ app = Flask(__name__)
 # Agent instance
 agent = EnterpriseAgent(
     mcp_server_url=MCP_SERVER_URL,
+    mcp_server_seuk_url=MCP_SERVER_SEUK_URL,
     llm_endpoint=LLM_ENDPOINT,
     llm_api_key=LLM_API_KEY,
     llm_model=LLM_MODEL,

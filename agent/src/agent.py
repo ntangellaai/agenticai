@@ -11,14 +11,18 @@ from mcp_client import MCPClient
 
 logger = logging.getLogger("agent.core")
 
-SYSTEM_PROMPT = """You are a SQL analyst. Answer business questions by querying a PostgreSQL database using the query tool. Always call query immediately with a SQL SELECT statement. Never explain before querying.
+SYSTEM_PROMPT = """You are a SQL analyst. Answer business questions by querying PostgreSQL databases using the query tool. Always call query immediately with a SQL SELECT statement. Never explain before querying.
 
 RULES:
 1. Call query immediately with one SELECT to get data
 2. After the first query returns results, answer the user directly — do NOT make additional queries unless data is insufficient
 3. If you get empty results or a column error, call describe_table to check exact columns, then retry
 
-ALWAYS USE THESE VIEWS (do not join raw tables):
+DATABASE SELECTION - Use the correct database based on the question:
+- "enterprise" (default): General enterprise contracts, account managers, providers, customers, renewal risks
+- "service_express_uk": UK Cloud services, monthly contract extracts, service breakdowns, UK customers (GoT character account managers)
+
+ENTERPRISE DATABASE - Views:
 - v_manager_portfolio(manager_name, region, team, total_contracts, total_customers, managed_revenue, avg_contract_value, pending_renewals, open_risks)
 - v_provider_concentration(provider_name, provider_type, tier, contract_count, customer_count, total_annual_value, pct_of_total_spend)
 - v_contract_details(contract_ref, customer_name, segment, provider_name, manager_name, contract_type, annual_value_usd, total_contract_value, status, days_until_expiry)
@@ -27,6 +31,12 @@ ALWAYS USE THESE VIEWS (do not join raw tables):
 - v_customer_overview(customer_name, segment, industry, region, total_contracts, active_contracts, total_active_annual_value)
 - v_support_revenue_risk(customer_name, segment, active_revenue, total_tickets, high_sev_tickets, open_tickets, avg_resolution_hours)
 - v_segment_summary(segment, customer_count, active_contracts, segment_revenue, avg_contract_value, open_risks)
+
+SERVICE EXPRESS UK DATABASE - Views:
+- v_contract_summary(extract_month, month_label, customer_name, customer_ref, segment, sub_segment, account_manager, contract_number, line_of_business, contract_end, contract_length_months, contract_total_monthly, discount_applied, discount_pct)
+- v_service_breakdown(extract_month, month_label, customer_name, segment, account_manager, contract_number, contract_end, discount_pct, service_name, service_line, quantity, monthly_total)
+- v_customer_portfolio_latest(customer_name, segment, account_manager, contract_count, total_monthly_value, earliest_renewal, latest_renewal)
+- v_renewal_pipeline(customer_name, segment, account_manager, contract_number, contract_end, days_to_renewal, contract_total_monthly, discount_pct, services)
 
 Raw tables only if views insufficient:
 - contracts(contract_id, customer_id, provider_id, manager_id, annual_value_usd, total_contract_value, status, start_date, end_date)
@@ -64,13 +74,18 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "query",
-            "description": "Execute a read-only SQL SELECT query against the enterprise database. Returns columns, rows, and row count. Maximum 1000 rows.",
+            "description": "Execute a read-only SQL SELECT query against a PostgreSQL database. Returns columns, rows, and row count. Maximum 1000 rows.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "sql": {
                         "type": "string",
                         "description": "SQL SELECT query to execute"
+                    },
+                    "database": {
+                        "type": "string",
+                        "description": "Database to query: 'enterprise' (default) for general contracts, 'service_express_uk' for UK Cloud services",
+                        "enum": ["enterprise", "service_express_uk"]
                     }
                 },
                 "required": ["sql"]
@@ -108,8 +123,10 @@ class EnterpriseAgent:
         llm_model: str,
         max_tool_calls: int = 5,
         llm_timeout: int = 120,
+        mcp_server_seuk_url: str = None,
     ):
         self.mcp_client = MCPClient(mcp_server_url)
+        self.mcp_client_seuk = MCPClient(mcp_server_seuk_url) if mcp_server_seuk_url else None
         self.llm = OpenAI(
             base_url=llm_endpoint,
             api_key=llm_api_key,
@@ -134,15 +151,22 @@ class EnterpriseAgent:
     def _call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
         """Execute a tool call via MCP client."""
         try:
+            # Determine which database to query (default to enterprise)
+            database = arguments.get("database", "enterprise")
+            
+            # Select the appropriate MCP client
+            if database == "service_express_uk" and self.mcp_client_seuk:
+                mcp_client = self.mcp_client_seuk
+            else:
+                mcp_client = self.mcp_client
+            
             if tool_name == "query":
                 sql = arguments.get("sql", "")
                 if not self._validate_sql(sql):
                     return json.dumps({"error": "Query rejected: only SELECT statements allowed"})
-                return self.mcp_client.call_tool("query", {"sql": sql})
-            elif tool_name == "list_tables":
-                return self.mcp_client.call_tool("list_tables", {})
+                return mcp_client.call_tool("query", {"sql": sql})
             elif tool_name == "describe_table":
-                return self.mcp_client.call_tool("describe_table", arguments)
+                return mcp_client.call_tool("describe_table", arguments)
             else:
                 return json.dumps({"error": f"Unknown tool: {tool_name}"})
         except Exception as e:
