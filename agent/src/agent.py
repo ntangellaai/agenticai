@@ -13,6 +13,8 @@ logger = logging.getLogger("agent.core")
 
 SYSTEM_PROMPT = """You are a SQL analyst. Answer business questions by querying a PostgreSQL database using the query tool. Always call query immediately with a SQL SELECT statement. Never explain before querying.
 
+If you get empty results or a column error, call describe_table to check exact columns, then retry.
+
 ALWAYS USE THESE VIEWS (do not join raw tables):
 - v_manager_portfolio(manager_name, region, team, total_contracts, total_customers, managed_revenue, avg_contract_value, pending_renewals, open_risks)
 - v_provider_concentration(provider_name, provider_type, tier, contract_count, customer_count, total_annual_value, pct_of_total_spend)
@@ -65,6 +67,23 @@ TOOLS = [
                     }
                 },
                 "required": ["sql"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "describe_table",
+            "description": "Get exact column names for a specific table or view. Use this when unsure which columns exist.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "table": {
+                        "type": "string",
+                        "description": "Table or view name to describe"
+                    }
+                },
+                "required": ["table"]
             }
         }
     }
