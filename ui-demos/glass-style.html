@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glassmorphism - Agentic AI Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* Animated Background Elements */
+        .bg-shapes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .shape {
+            position: absolute;
+            filter: blur(100px);
+            opacity: 0.6;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .shape-1 {
+            width: 400px;
+            height: 400px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            top: -200px;
+            left: -100px;
+            animation-delay: 0s;
+        }
+
+        .shape-2 {
+            width: 300px;
+            height: 300px;
+            background: #4ecdc4;
+            border-radius: 50%;
+            bottom: -150px;
+            right: -100px;
+            animation-delay: -5s;
+        }
+
+        .shape-3 {
+            width: 250px;
+            height: 250px;
+            background: #ffe66d;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -30px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+
+        /* Glass Container */
+        .glass-container {
+            width: 100%;
+            max-width: 900px;
+            height: 85vh;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .glass-header {
+            padding: 24px 32px;
+            background: rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo-glow {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .title-text h1 {
+            font-size: 1.25rem;
+            color: white;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .title-text p {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .glass-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 32px;
+        }
+
+        .message {
+            margin-bottom: 24px;
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-bubble {
+            max-width: 80%;
+            padding: 16px 20px;
+            border-radius: 20px;
+            position: relative;
+            backdrop-filter: blur(20px);
+        }
+
+        .message.user .message-bubble {
+            background: rgba(255, 255, 255, 0.25);
+            margin-left: auto;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .message.assistant .message-bubble {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            color: #1a1a1a;
+        }
+
+        .message-content {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .message-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+
+        /* Tool Card */
+        .tool-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 16px 0;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            animation: popIn 0.3s ease;
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .tool-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .tool-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+
+        .tool-title {
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .tool-status {
+            margin-left: auto;
+            padding: 4px 12px;
+            background: #d4edda;
+            color: #155724;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .tool-content {
+            background: #1e1e2e;
+            border-radius: 12px;
+            padding: 16px;
+            overflow-x: auto;
+        }
+
+        .tool-content pre {
+            color: #cdd6f4;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .sql-keyword { color: #cba6f7; }
+        .sql-string { color: #a6e3a1; }
+        .sql-function { color: #f9e2af; }
+
+        /* Result Card */
+        .result-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 16px 0;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .result-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            transition: transform 0.2s;
+        }
+
+        .result-item:hover {
+            transform: translateX(4px);
+        }
+
+        .item-rank {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-right: 12px;
+        }
+
+        .item-name {
+            flex: 1;
+            font-weight: 500;
+            color: #1a1a1a;
+        }
+
+        .item-value {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 1.1rem;
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 24px 32px;
+            background: rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 12px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(20px);
+            transition: all 0.3s;
+        }
+
+        .input-wrapper:focus-within {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .input-field {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 1rem;
+            color: white;
+            resize: none;
+            min-height: 24px;
+            max-height: 100px;
+            outline: none;
+        }
+
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .input-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+
+        .input-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+        }
+
+        .input-btn.send {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        /* Suggestion Pills */
+        .suggestions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .suggestion-pill {
+            padding: 10px 18px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .suggestion-pill:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Typing Animation */
+        .typing {
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+        }
+
+        .typing-dot {
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0.6); }
+            40% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <div class="glass-container">
+        <div class="glass-header">
+            <div class="header-title">
+                <div class="logo-glow">🤖</div>
+                <div class="title-text">
+                    <h1>Service Express UK AI</h1>
+                    <p>UK Cloud Business Analytics</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="glass-btn">📊 History</button>
+                <button class="glass-btn">⚙️ Settings</button>
+            </div>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <!-- Messages added here -->
+        </div>
+
+        <div class="input-area">
+            <div class="input-wrapper">
+                <textarea class="input-field" id="userInput" placeholder="Ask about UK Cloud contracts, customers, or services..." rows="1"></textarea>
+                <div class="input-actions">
+                    <button class="input-btn">📎</button>
+                    <button class="input-btn">🎙️</button>
+                    <button class="input-btn send" onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+            <div class="suggestions">
+                <span class="suggestion-pill" onclick="sendExample('Top 5 customers')">✨ Top 5 customers</span>
+                <span class="suggestion-pill" onclick="sendExample('Service revenue')">📈 Service revenue</span>
+                <span class="suggestion-pill" onclick="sendExample('Account managers')">👤 Account managers</span>
+                <span class="suggestion-pill" onclick="sendExample('Renewals')">🔄 Renewals</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatArea = document.getElementById('chatArea');
+        const userInput = document.getElementById('userInput');
+
+        function addMessage(content, isUser = false) {
+            const msg = document.createElement('div');
+            msg.className = `message ${isUser ? 'user' : 'assistant'}`;
+            msg.innerHTML = `
+                <div class="message-bubble">
+                    <div class="message-content">${content}</div>
+                    <div class="message-meta">
+                        <span>${isUser ? 'You' : 'Service Express UK AI'}</span>
+                        <span>•</span>
+                        <span>${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
+                </div>
+            `;
+            chatArea.appendChild(msg);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            return msg.querySelector('.message-content');
+        }
+
+        function addToolCard(content, sql) {
+            const card = document.createElement('div');
+            card.className = 'tool-card';
+            card.innerHTML = `
+                <div class="tool-header">
+                    <div class="tool-icon">🔍</div>
+                    <span class="tool-title">SQL Query</span>
+                    <span class="tool-status">✓ Success</span>
+                </div>
+                <div class="tool-content">
+                    <pre>${highlightSQL(sql)}</pre>
+                </div>
+            `;
+            content.parentElement.appendChild(card);
+        }
+
+        function addResultCard(content, data) {
+            const card = document.createElement('div');
+            card.className = 'result-card';
+            let itemsHTML = data.map((item, i) => `
+                <div class="result-item">
+                    <div class="item-rank">${i + 1}</div>
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-value">${item.value}</div>
+                </div>
+            `).join('');
+            
+            card.innerHTML = `
+                <div class="result-title">📊 Query Results</div>
+                <div class="result-grid">
+                    ${itemsHTML}
+                </div>
+            `;
+            content.parentElement.appendChild(card);
+        }
+
+        function highlightSQL(sql) {
+            return sql
+                .replace(/\b(SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|HAVING|SUM|COUNT|AS|AND|OR)\b/g, '<span class="sql-keyword">$1</span>')
+                .replace(/'[^']*'/g, '<span class="sql-string">$&</span>')
+                .replace(/\b(SUM|COUNT|AVG|MIN|MAX)\b/g, '<span class="sql-function">$1</span>');
+        }
+
+        function sendExample(text) {
+            userInput.value = text;
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            addMessage(`<p>${text}</p>`, true);
+            userInput.value = '';
+
+            // Typing indicator
+            const typingMsg = addMessage(`<div class="typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`);
+
+            await new Promise(r => setTimeout(r, 1500));
+            typingMsg.parentElement.parentElement.remove();
+
+            const content = addMessage(`<p>Here are the top UK cloud customers by monthly value:</p>`);
+
+            const sql = `SELECT customer_name, total_monthly_value 
+FROM v_customer_portfolio_latest 
+ORDER BY total_monthly_value DESC 
+LIMIT 5`;
+
+            addToolCard(content, sql);
+
+            await new Promise(r => setTimeout(r, 500));
+
+            const resultData = [
+                { name: 'Forestdale Partners', value: '£283,468' },
+                { name: 'Heathrow Partners', value: '£222,804' },
+                { name: 'Globex Corporation', value: '£165,019' },
+                { name: 'Windermere Solutions', value: '£158,761' },
+                { name: 'Foxgrove Industries', value: '£144,976' }
+            ];
+
+            addResultCard(content, resultData);
+        }
+
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+
+        // Initial message
+        setTimeout(() => {
+            sendExample('Top 5 UK cloud customers');
+        }, 800);
+    </script>
+</body>
+</html>

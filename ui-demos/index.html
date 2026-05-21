@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic AI Chat Interface Demos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+
+        .demos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+        }
+
+        .demo-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .demo-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .demo-header {
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .demo-header h2 {
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+
+        .demo-header p {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .demo-preview {
+            height: 400px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .demo-preview iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .demo-link {
+            display: block;
+            background: #0f62fe;
+            color: white;
+            text-align: center;
+            padding: 15px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .demo-link:hover {
+            background: #0353e9;
+        }
+
+        .features {
+            padding: 15px 20px;
+            background: #f8f9fa;
+        }
+
+        .features h4 {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .features ul {
+            list-style: none;
+            font-size: 0.9rem;
+            color: #444;
+        }
+
+        .features li {
+            padding: 3px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .features li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #0f62fe;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Agentic AI Chat Interface Demos</h1>
+        <p class="subtitle">Interactive mockups for Service Express UK AI Assistant</p>
+
+        <div class="demos-grid">
+            <!-- Demo 1: OpenAI/ChatGPT Style -->
+            <div class="demo-card">
+                <div class="demo-header">
+                    <h2>🎯 OpenAI Style</h2>
+                    <p>Clean, minimal chat interface with tool visibility</p>
+                </div>
+                <div class="demo-preview">
+                    <iframe src="openai-style.html"></iframe>
+                </div>
+                <div class="features">
+                    <h4>Key Features</h4>
+                    <ul>
+                        <li>Collapsible tool call panels</li>
+                        <li>Syntax highlighted SQL</li>
+                        <li>Regenerate & feedback buttons</li>
+                        <li>Minimal visual noise</li>
+                    </ul>
+                </div>
+                <a href="openai-style.html" class="demo-link" target="_blank">View Full Demo →</a>
+            </div>
+
+            <!-- Demo 2: Chainlit Style -->
+            <div class="demo-card">
+                <div class="demo-header">
+                    <h2>⚡ Chainlit Style</h2>
+                    <p>Rich step visualization with progress indicators</p>
+                </div>
+                <div class="demo-preview">
+                    <iframe src="chainlit-style.html"></iframe>
+                </div>
+                <div class="features">
+                    <h4>Key Features</h4>
+                    <ul>
+                        <li>Visual step-by-step progress</li>
+                        <li>Execution time tracking</li>
+                        <li>File upload support</li>
+                        <li>Sidebar chat history</li>
+                    </ul>
+                </div>
+                <a href="chainlit-style.html" class="demo-link" target="_blank">View Full Demo →</a>
+            </div>
+
+            <!-- Demo 3: IBM Carbon Design -->
+            <div class="demo-card">
+                <div class="demo-header">
+                    <h2>🏢 IBM Carbon Design</h2>
+                    <p>Enterprise-grade with data tables and charts</p>
+                </div>
+                <div class="demo-preview">
+                    <iframe src="carbon-style.html"></iframe>
+                </div>
+                <div class="features">
+                    <h4>Key Features</h4>
+                    <ul>
+                        <li>Professional data tables</li>
+                        <li>Interactive charts</li>
+                        <li>Export functionality</li>
+                        <li>Enterprise accessibility</li>
+                    </ul>
+                </div>
+                <a href="carbon-style.html" class="demo-link" target="_blank">View Full Demo →</a>
+            </div>
+
+            <!-- Demo 4: Modern Glassmorphism -->
+            <div class="demo-card">
+                <div class="demo-header">
+                    <h2>✨ Glassmorphism</h2>
+                    <p>Modern frosted glass aesthetic with animations</p>
+                </div>
+                <div class="demo-preview">
+                    <iframe src="glass-style.html"></iframe>
+                </div>
+                <div class="features">
+                    <h4>Key Features</h4>
+                    <ul>
+                        <li>Frosted glass effects</li>
+                        <li>Animated tool transitions</li>
+                        <li>Typing indicators</li>
+                        <li>Gradient backgrounds</li>
+                    </ul>
+                </div>
+                <a href="glass-style.html" class="demo-link" target="_blank">View Full Demo →</a>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 50px; color: rgba(255,255,255,0.7);">
+            <p>Click any demo to open in full screen • Interact with the chat interfaces</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">Built for Service Express UK AI Assistant evaluation</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAI Style - Agentic AI Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: #ffffff;
+            border-bottom: 1px solid #e5e5e5;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .header-model {
+            font-size: 0.75rem;
+            color: #666;
+            margin-left: 8px;
+            padding: 2px 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 0;
+            background: #ffffff;
+        }
+
+        .message {
+            display: flex;
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            background: #ffffff;
+        }
+
+        .message.assistant {
+            background: #f7f7f8;
+        }
+
+        .avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            margin-right: 16px;
+            flex-shrink: 0;
+        }
+
+        .avatar.user {
+            background: #5436da;
+            color: white;
+        }
+
+        .avatar.assistant {
+            background: #10a37f;
+            color: white;
+        }
+
+        .message-content {
+            flex: 1;
+            max-width: 800px;
+            line-height: 1.6;
+            color: #1a1a1a;
+        }
+
+        .message-content p {
+            margin-bottom: 12px;
+        }
+
+        /* Tool Call Panel */
+        .tool-panel {
+            background: #ffffff;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            margin: 12px 0;
+            overflow: hidden;
+        }
+
+        .tool-header {
+            background: #f9f9f9;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .tool-header:hover {
+            background: #f0f0f0;
+        }
+
+        .tool-icon {
+            width: 20px;
+            height: 20px;
+            background: #0f62fe;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .tool-name {
+            font-weight: 500;
+            color: #1a1a1a;
+            font-size: 0.9rem;
+        }
+
+        .tool-status {
+            margin-left: auto;
+            font-size: 0.8rem;
+            color: #0f62fe;
+        }
+
+        .tool-content {
+            padding: 16px;
+            background: #fafafa;
+        }
+
+        .tool-content.hidden {
+            display: none;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+
+        .code-block pre {
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .sql-keyword { color: #569cd6; }
+        .sql-string { color: #ce9178; }
+        .sql-function { color: #dcdcaa; }
+
+        /* Action Buttons */
+        .message-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .message:hover .message-actions {
+            opacity: 1;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: 1px solid #e5e5e5;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #f5f5f5;
+            border-color: #d0d0d0;
+        }
+
+        /* Input Area */
+        .input-container {
+            background: #ffffff;
+            border-top: 1px solid #e5e5e5;
+            padding: 16px 20px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-box {
+            flex: 1;
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 1rem;
+            resize: none;
+            min-height: 52px;
+            max-height: 200px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-box:focus {
+            border-color: #0f62fe;
+        }
+
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #0f62fe;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .send-btn:hover {
+            background: #0353e9;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+        }
+
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Example Prompts */
+        .examples {
+            padding: 20px;
+            background: #f7f7f8;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .example-pill {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .example-pill:hover {
+            background: #f0f0f0;
+            border-color: #0f62fe;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span class="header-title">Service Express UK AI</span>
+        <span class="header-model">GPT-4 • SEUK Database</span>
+    </div>
+
+    <div class="chat-container" id="chatContainer">
+        <!-- Welcome message -->
+        <div class="message assistant">
+            <div class="avatar assistant">🤖</div>
+            <div class="message-content">
+                <p>Hello! I'm your Service Express UK AI Assistant. I can help you analyze UK Cloud contract data, customer portfolios, and service revenues.</p>
+                <p>Try asking me about top customers, service breakdowns, or contract renewals.</p>
+            </div>
+        </div>
+
+        <!-- Example conversation - will be populated by JS -->
+    </div>
+
+    <div class="examples">
+        <button class="example-pill" onclick="sendExample('Top 5 UK cloud customers')">Top 5 UK cloud customers</button>
+        <button class="example-pill" onclick="sendExample('Revenue by service type')">Revenue by service type</button>
+        <button class="example-pill" onclick="sendExample('Contracts with Theon Greyjoy')">Contracts with Theon Greyjoy</button>
+        <button class="example-pill" onclick="sendExample('Upcoming renewals')">Upcoming renewals</button>
+    </div>
+
+    <div class="input-container">
+        <textarea class="input-box" id="userInput" placeholder="Ask about UK Cloud data..." rows="1"></textarea>
+        <button class="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            messageDiv.innerHTML = `
+                <div class="avatar ${isUser ? 'user' : 'assistant'}">${isUser ? '👤' : '🤖'}</div>
+                <div class="message-content">${content}</div>
+            `;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return messageDiv;
+        }
+
+        function addToolPanel(sql, duration) {
+            const toolId = 'tool-' + Date.now();
+            const panel = document.createElement('div');
+            panel.className = 'tool-panel';
+            panel.innerHTML = `
+                <div class="tool-header" onclick="toggleTool('${toolId}')">
+                    <div class="tool-icon">🔍</div>
+                    <span class="tool-name">query</span>
+                    <span class="tool-status">✓ ${duration}s</span>
+                </div>
+                <div class="tool-content" id="${toolId}">
+                    <div class="code-block">
+                        <pre>${highlightSQL(sql)}</pre>
+                    </div>
+                </div>
+            `;
+            return panel;
+        }
+
+        function toggleTool(id) {
+            const content = document.getElementById(id);
+            content.classList.toggle('hidden');
+        }
+
+        function highlightSQL(sql) {
+            return sql
+                .replace(/\b(SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|HAVING|SUM|COUNT|AS)\b/g, '<span class="sql-keyword">$1</span>')
+                .replace(/'[^']*'/g, '<span class="sql-string">$&</span>')
+                .replace(/\b(SUM|COUNT|AVG|MIN|MAX)\b/g, '<span class="sql-function">$1</span>');
+        }
+
+        function sendExample(text) {
+            userInput.value = text;
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            addMessage(`<p>${text}</p>`, true);
+            userInput.value = '';
+
+            // Show loading
+            const loadingMsg = addMessage(`<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>`);
+
+            // Simulate response
+            await new Promise(r => setTimeout(r, 1500));
+            loadingMsg.remove();
+
+            // Generate response based on input
+            let response = '';
+            let sql = '';
+
+            if (text.toLowerCase().includes('top 5') || text.toLowerCase().includes('customers')) {
+                sql = `SELECT customer_name, total_monthly_value 
+FROM v_customer_portfolio_latest 
+ORDER BY total_monthly_value DESC 
+LIMIT 5`;
+                response = `
+                    <p>The top 5 UK cloud customers by monthly value are:</p>
+                    <p>1. <strong>Forestdale Partners</strong> — £283,468.23</p>
+                    <p>2. <strong>Heathrow Partners</strong> — £222,804.02</p>
+                    <p>3. <strong>Globex Corporation</strong> — £165,018.63</p>
+                    <p>4. <strong>Windermere Solutions</strong> — £158,761.31</p>
+                    <p>5. <strong>Foxgrove Industries</strong> — £144,976.14</p>
+                `;
+            } else if (text.toLowerCase().includes('service') || text.toLowerCase().includes('revenue')) {
+                sql = `SELECT service_name, SUM(monthly_total) as total_revenue 
+FROM v_service_breakdown 
+GROUP BY service_name 
+ORDER BY total_revenue DESC 
+LIMIT 5`;
+                response = `
+                    <p>The top 5 services by total revenue are:</p>
+                    <p>1. <strong>IBM Power IaaS</strong> — £460,162.90</p>
+                    <p>2. <strong>x86 IaaS</strong> — £356,220.84</p>
+                    <p>3. <strong>Disaster Recovery as a Service</strong> — £335,938.55</p>
+                    <p>4. <strong>Managed Backup</strong> — £323,569.18</p>
+                    <p>5. <strong>Managed Colo</strong> — £313,008.85</p>
+                `;
+            } else if (text.toLowerCase().includes('theon') || text.toLowerCase().includes('greyjoy')) {
+                sql = `SELECT customer_name, contract_number, contract_total_monthly 
+FROM v_contract_summary 
+WHERE account_manager = 'Theon Greyjoy'`;
+                response = `
+                    <p>Theon Greyjoy manages the following contracts:</p>
+                    <p>• <strong>Harborview Systems</strong> (DEMO-0002) — £0.00/month</p>
+                    <p>• <strong>Birchwood Capital</strong> (DEMO-0042) — £15,420.00/month</p>
+                    <p>• <strong>Silvercrest Holdings</strong> (DEMO-0088) — £8,250.00/month</p>
+                `;
+            } else if (text.toLowerCase().includes('renewal')) {
+                sql = `SELECT customer_name, contract_number, days_to_renewal, contract_total_monthly 
+FROM v_renewal_pipeline 
+WHERE days_to_renewal <= 90 
+ORDER BY days_to_renewal ASC`;
+                response = `
+                    <p>Here are contracts renewing in the next 90 days:</p>
+                    <p>• <strong>Westbridge Industries</strong> — 15 days (DEMO-0012) — £45,200/month</p>
+                    <p>• <strong>Northpoint Solutions</strong> — 28 days (DEMO-0034) — £32,100/month</p>
+                    <p>• <strong>Eastgate Partners</strong> — 45 days (DEMO-0056) — £28,750/month</p>
+                    <p>• <strong>Southview Corp</strong> — 67 days (DEMO-0078) — £51,300/month</p>
+                `;
+            } else {
+                response = `<p>I can help you analyze UK Cloud data. Try asking about:</p><p>• Top customers by revenue</p><p>• Service breakdowns</p><p>• Account manager portfolios</p><p>• Contract renewals</p>`;
+            }
+
+            const msgDiv = addMessage(response);
+            
+            if (sql) {
+                const toolPanel = addToolPanel(sql, (Math.random() * 2 + 0.5).toFixed(1));
+                msgDiv.querySelector('.message-content').insertBefore(toolPanel, msgDiv.querySelector('.message-content').firstChild);
+                
+                // Add action buttons
+                const actions = document.createElement('div');
+                actions.className = 'message-actions';
+                actions.innerHTML = `
+                    <button class="action-btn">🔄 Regenerate</button>
+                    <button class="action-btn">👍 Helpful</button>
+                    <button class="action-btn">👎 Not helpful</button>
+                    <button class="action-btn">📋 Copy</button>
+                `;
+                msgDiv.querySelector('.message-content').appendChild(actions);
+            }
+        }
+
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+        });
+
+        // Load initial example
+        setTimeout(() => {
+            sendExample('Top 5 UK cloud customers');
+        }, 500);
+    </script>
+</body>
+</html>

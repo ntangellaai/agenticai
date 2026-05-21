@@ -86,7 +86,7 @@ agenticai/
 │   │   ├── secret.yaml
 │   │   ├── configmap.yaml
 │   │   └── networkpolicy.yaml
-│   ├── mcp-server/
+│   ├── mcp-server-seuk/
 │   │   ├── deployment.yaml
 │   │   ├── service.yaml
 │   │   ├── configmap.yaml
@@ -123,7 +123,7 @@ oc apply -f openshift/postgres/
 oc exec -it postgres-0 -- psql -U postgres -f /docker-entrypoint-initdb.d/schema.sql
 
 # Phase 3: Deploy MCP Server
-oc apply -f openshift/mcp-server/
+oc apply -f openshift/mcp-server-seuk/
 
 # Phase 4: Deploy Agent
 oc apply -f openshift/agent/

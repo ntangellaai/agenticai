@@ -30,8 +30,8 @@ data:
   # pg_hba.conf overrides - require scram-sha-256
   pg_hba.conf.additions: |
     # TYPE  DATABASE        USER            ADDRESS                 METHOD
-    host    enterprise_contracts  mcp_readonly    all                     scram-sha-256
-    host    enterprise_contracts  appuser         all                     scram-sha-256
+    host    service_express_uk  mcp_readonly    all                     scram-sha-256
+    host    service_express_uk  appuser         all                     scram-sha-256
     host    all             all             all                     scram-sha-256
 
   # Initialization script to create read-only user
@@ -46,7 +46,7 @@ data:
     END
     $$;
     
-    GRANT CONNECT ON DATABASE enterprise_contracts TO mcp_readonly;
+    GRANT CONNECT ON DATABASE service_express_uk TO mcp_readonly;
     GRANT USAGE ON SCHEMA public TO mcp_readonly;
     GRANT SELECT ON ALL TABLES IN SCHEMA public TO mcp_readonly;
     GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO mcp_readonly;

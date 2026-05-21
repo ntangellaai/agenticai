@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chainlit Style - Agentic AI Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: #ffffff;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        .new-chat-btn:hover {
+            background: #ebebeb;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .chat-item {
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #444;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+
+        .chat-item:hover, .chat-item.active {
+            background: #f0f0f0;
+        }
+
+        .chat-item.active {
+            background: #e3f2fd;
+            color: #0f62fe;
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+        }
+
+        .main-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-title {
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: #f5f5f5;
+            border-color: #0f62fe;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            background: linear-gradient(to bottom, #fafafa, #ffffff);
+        }
+
+        .message {
+            margin-bottom: 24px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .message-avatar.user {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .message-avatar.assistant {
+            background: linear-gradient(135deg, #0f62fe, #0353e9);
+            color: white;
+        }
+
+        .message-author {
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 0.9rem;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            color: #888;
+            margin-left: auto;
+        }
+
+        .message-content {
+            margin-left: 42px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* Steps */
+        .steps-container {
+            margin: 16px 0;
+            border-left: 3px solid #e0e0e0;
+            padding-left: 16px;
+        }
+
+        .step {
+            margin-bottom: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e8e8e8;
+            transition: all 0.3s;
+        }
+
+        .step.active {
+            border-color: #0f62fe;
+            background: #e3f2fd;
+        }
+
+        .step.completed {
+            border-color: #10a37f;
+            background: #e8f5e9;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .step-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .step-icon.pending {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .step-icon.running {
+            background: #0f62fe;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        .step-icon.done {
+            background: #10a37f;
+            color: white;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .step-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .step-time {
+            margin-left: auto;
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .step-content {
+            margin-left: 28px;
+            font-size: 0.85rem;
+            color: #555;
+            font-family: 'Consolas', monospace;
+            background: #ffffff;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            overflow-x: auto;
+        }
+
+        .step-output {
+            margin-left: 28px;
+            margin-top: 8px;
+            padding: 8px;
+            background: #ffffff;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: #333;
+            border-left: 3px solid #10a37f;
+        }
+
+        /* Input Area */
+        .input-container {
+            padding: 20px 24px;
+            background: #ffffff;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            background: #f5f5f5;
+            border-radius: 16px;
+            padding: 12px 16px;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #0f62fe;
+            background: #ffffff;
+        }
+
+        .input-field {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 1rem;
+            resize: none;
+            min-height: 24px;
+            max-height: 120px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .input-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: background 0.2s;
+        }
+
+        .input-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .input-btn.send {
+            background: #0f62fe;
+            color: white;
+        }
+
+        .input-btn.send:hover {
+            background: #0353e9;
+        }
+
+        /* Suggestions */
+        .suggestions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .suggestion-chip {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .suggestion-chip:hover {
+            background: #e3f2fd;
+            border-color: #0f62fe;
+            color: #0f62fe;
+        }
+
+        /* Data Table */
+        .data-table {
+            margin-top: 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            background: #f5f5f5;
+            padding: 12px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #555;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            padding: 12px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .table-row:last-child {
+            border-bottom: none;
+        }
+
+        .table-row:hover {
+            background: #fafafa;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 24px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .status-bar.show {
+            opacity: 1;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <button class="new-chat-btn">
+                <span>+</span> New Chat
+            </button>
+        </div>
+        <div class="chat-history">
+            <div class="chat-item active">
+                <span>💬</span> Top 5 UK customers
+            </div>
+            <div class="chat-item">
+                <span>💬</span> Revenue analysis
+            </div>
+            <div class="chat-item">
+                <span>💬</span> Theon Greyjoy contracts
+            </div>
+            <div class="chat-item">
+                <span>💬</span> Upcoming renewals
+            </div>
+            <div class="chat-item">
+                <span>💬</span> Service breakdown Q1
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="main-header">
+            <span class="header-title">⚡ Service Express UK AI</span>
+            <div class="header-actions">
+                <button class="icon-btn">⚙️</button>
+                <button class="icon-btn">👤</button>
+            </div>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <!-- Messages will be added here -->
+        </div>
+
+        <div class="input-container">
+            <div class="input-wrapper">
+                <textarea class="input-field" id="userInput" placeholder="Ask about UK Cloud data..." rows="1"></textarea>
+                <div class="input-actions">
+                    <button class="input-btn">📎</button>
+                    <button class="input-btn send" onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+            <div class="suggestions">
+                <span class="suggestion-chip" onclick="sendExample('Top customers')">Top customers</span>
+                <span class="suggestion-chip" onclick="sendExample('Service revenue')">Service revenue</span>
+                <span class="suggestion-chip" onclick="sendExample('Account managers')">Account managers</span>
+                <span class="suggestion-chip" onclick="sendExample('Contract renewals')">Contract renewals</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-bar" id="statusBar">
+        <div class="spinner"></div>
+        <span>Processing your request...</span>
+    </div>
+
+    <script>
+        const chatArea = document.getElementById('chatArea');
+        const userInput = document.getElementById('userInput');
+        const statusBar = document.getElementById('statusBar');
+
+        function addMessage(content, isUser = false) {
+            const msg = document.createElement('div');
+            msg.className = 'message';
+            msg.innerHTML = `
+                <div class="message-header">
+                    <div class="message-avatar ${isUser ? 'user' : 'assistant'}">${isUser ? '👤' : '🤖'}</div>
+                    <span class="message-author">${isUser ? 'You' : 'Service Express UK AI'}</span>
+                    <span class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                </div>
+                <div class="message-content">${content}</div>
+            `;
+            chatArea.appendChild(msg);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            return msg.querySelector('.message-content');
+        }
+
+        function addSteps(container, steps) {
+            const stepsContainer = document.createElement('div');
+            stepsContainer.className = 'steps-container';
+            
+            steps.forEach((step, index) => {
+                const stepEl = document.createElement('div');
+                stepEl.className = `step ${step.status}`;
+                stepEl.id = `step-${index}`;
+                stepEl.innerHTML = `
+                    <div class="step-header">
+                        <div class="step-icon ${step.status}">${step.status === 'done' ? '✓' : step.status === 'running' ? '◐' : '○'}</div>
+                        <span class="step-name">${step.name}</span>
+                        <span class="step-time">${step.duration || ''}</span>
+                    </div>
+                    ${step.content ? `<div class="step-content">${step.content}</div>` : ''}
+                    ${step.output ? `<div class="step-output">${step.output}</div>` : ''}
+                `;
+                stepsContainer.appendChild(stepEl);
+            });
+            
+            container.appendChild(stepsContainer);
+        }
+
+        function addDataTable(container, data) {
+            const table = document.createElement('div');
+            table.className = 'data-table';
+            
+            const header = document.createElement('div');
+            header.className = 'table-header';
+            header.innerHTML = Object.keys(data[0]).map(k => `<div>${k}</div>`).join('');
+            table.appendChild(header);
+            
+            data.forEach(row => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'table-row';
+                rowEl.innerHTML = Object.values(row).map(v => `<div>${v}</div>`).join('');
+                table.appendChild(rowEl);
+            });
+            
+            container.appendChild(table);
+        }
+
+        function sendExample(text) {
+            userInput.value = text;
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            addMessage(`<p>${text}</p>`, true);
+            userInput.value = '';
+            statusBar.classList.add('show');
+
+            await new Promise(r => setTimeout(r, 500));
+
+            const content = addMessage('<p>Processing your request...</p>');
+
+            // Add steps
+            const steps = [
+                { name: 'Understanding question', status: 'done', duration: '0.3s' },
+                { name: 'Querying database', status: 'running', content: 'SELECT customer_name, total_monthly_value FROM v_customer_portfolio_latest ORDER BY total_monthly_value DESC LIMIT 5' },
+                { name: 'Processing results', status: 'pending' }
+            ];
+            content.innerHTML = '';
+            addSteps(content, steps);
+
+            await new Promise(r => setTimeout(r, 1500));
+
+            // Update steps
+            steps[1].status = 'done';
+            steps[1].duration = '1.2s';
+            steps[2].status = 'running';
+            content.innerHTML = '';
+            addSteps(content, steps);
+
+            await new Promise(r => setTimeout(r, 800));
+
+            steps[2].status = 'done';
+            steps[2].duration = '0.5s';
+            steps[2].output = '5 records found';
+            content.innerHTML = '';
+            addSteps(content, steps);
+
+            // Add final answer
+            content.innerHTML += `
+                <p style="margin-top: 16px;">The top 5 UK cloud customers by monthly value are:</p>
+            `;
+
+            const tableData = [
+                { 'Customer': 'Forestdale Partners', 'Monthly Value': '£283,468.23', 'Contracts': '3' },
+                { 'Customer': 'Heathrow Partners', 'Monthly Value': '£222,804.02', 'Contracts': '2' },
+                { 'Customer': 'Globex Corporation', 'Monthly Value': '£165,018.63', 'Contracts': '4' },
+                { 'Customer': 'Windermere Solutions', 'Monthly Value': '£158,761.31', 'Contracts': '2' },
+                { 'Customer': 'Foxgrove Industries', 'Monthly Value': '£144,976.14', 'Contracts': '3' }
+            ];
+            addDataTable(content, tableData);
+
+            statusBar.classList.remove('show');
+        }
+
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Initial message
+        setTimeout(() => {
+            sendExample('Top 5 UK cloud customers');
+        }, 500);
+    </script>
+</body>
+</html>
