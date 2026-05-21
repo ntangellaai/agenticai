@@ -6,7 +6,7 @@ CREATE OR REPLACE VIEW v_revenue_by_segment AS
 SELECT 
     segment,
     COUNT(DISTINCT customer_name) as customer_count,
-    COUNT(DISTINCT contract_number) as contract_count,
+    SUM(contract_count) as contract_count,
     SUM(total_monthly_value) as total_monthly_revenue,
     AVG(total_monthly_value) as avg_monthly_revenue,
     MIN(total_monthly_value) as min_monthly_revenue,
