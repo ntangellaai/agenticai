@@ -25,28 +25,50 @@ AVAILABLE VIEWS:
 - v_service_breakdown(extract_month, month_label, customer_name, segment, account_manager, contract_number, contract_end, discount_pct, service_name, service_line, quantity, monthly_total)
 - v_customer_portfolio_latest(customer_name, segment, account_manager, contract_count, total_monthly_value, earliest_renewal, latest_renewal)
 - v_renewal_pipeline(customer_name, segment, account_manager, contract_number, contract_end, days_to_renewal, contract_total_monthly, discount_pct, services)
+- v_revenue_by_segment(segment, customer_count, contract_count, total_monthly_revenue, avg_monthly_revenue, min_monthly_revenue, max_monthly_revenue)
+- v_account_manager_performance(account_manager, customers_managed, contracts_managed, total_revenue, avg_contract_value, discounted_contracts, avg_discount_pct)
+- v_service_revenue_summary(service_name, customer_count, contract_count, total_monthly_revenue, total_quantity, avg_monthly_per_contract)
+- v_renewal_urgency(urgency_bucket, contract_count, customer_count, total_monthly_value, avg_days_to_renewal)
+- v_executive_summary(total_customers, total_contracts, total_monthly_revenue, avg_customer_value, renewals_90d, total_account_managers)
+- v_discount_analysis(discount_applied, contract_count, customer_count, total_monthly_value, avg_discount_pct, min_discount_pct, max_discount_pct)
+- v_top_customers(customer_name, segment, account_manager, contract_count, total_monthly_value, earliest_renewal, latest_renewal, revenue_rank)
+- v_customer_service_mix(customer_name, segment, service_count, services_used, total_service_revenue)
 
 VIEW USAGE GUIDE:
 - v_customer_portfolio_latest: Use for customer/portfolio analysis (has total_monthly_value per customer, NO contract_total_monthly)
 - v_contract_summary: Use for contract-level data (has contract_total_monthly per contract)
 - v_renewal_pipeline: Use for renewal tracking (has days_to_renewal)
 - v_service_breakdown: Use for service/revenue analysis (has monthly_total per service line)
+- v_revenue_by_segment: USE THIS for "revenue by segment" questions - columns already aggregated
+- v_account_manager_performance: USE THIS for "best account manager" or "AM performance" questions
+- v_service_revenue_summary: USE THIS for "top services" or "service revenue" questions
+- v_renewal_urgency: USE THIS for "renewals" or "upcoming renewals" questions - already categorized
+- v_executive_summary: USE THIS for "summary" or "overview" questions - single row with totals
+- v_discount_analysis: USE THIS for "discount" questions - already grouped by discount_applied
+- v_top_customers: USE THIS for "top customers" questions - already ranked with revenue_rank
+- v_customer_service_mix: USE THIS for "what services does X use" questions
 
 Examples:
 Q: get top 5 UK cloud customers
-A: query("SELECT customer_name, total_monthly_value FROM v_customer_portfolio_latest ORDER BY total_monthly_value DESC LIMIT 5", database="service_express_uk")
+A: query("SELECT customer_name, total_monthly_value FROM v_top_customers WHERE revenue_rank <= 5 ORDER BY revenue_rank", database="service_express_uk")
 
 Q: total revenue by customer segment
-A: query("SELECT segment, SUM(total_monthly_value) as total_revenue FROM v_customer_portfolio_latest GROUP BY segment ORDER BY total_revenue DESC", database="service_express_uk")
+A: query("SELECT segment, total_monthly_revenue FROM v_revenue_by_segment ORDER BY total_monthly_revenue DESC", database="service_express_uk")
 
 Q: top 5 services by revenue
-A: query("SELECT service_name, SUM(monthly_total) as total_revenue FROM v_service_breakdown GROUP BY service_name ORDER BY total_revenue DESC LIMIT 5", database="service_express_uk")
+A: query("SELECT service_name, total_monthly_revenue FROM v_service_revenue_summary ORDER BY total_monthly_revenue DESC LIMIT 5", database="service_express_uk")
 
 Q: contracts managed by Theon Greyjoy
 A: query("SELECT customer_name, contract_number, contract_total_monthly FROM v_contract_summary WHERE account_manager = 'Theon Greyjoy'", database="service_express_uk")
 
 Q: upcoming renewals in next 90 days
-A: query("SELECT customer_name, contract_number, days_to_renewal, contract_total_monthly FROM v_renewal_pipeline WHERE days_to_renewal <= 90 ORDER BY days_to_renewal ASC", database="service_express_uk")
+A: query("SELECT urgency_bucket, contract_count, total_monthly_value FROM v_renewal_urgency WHERE urgency_bucket != 'Future (90+ days)' ORDER BY avg_days_to_renewal", database="service_express_uk")
+
+Q: which account manager brings in the most revenue
+A: query("SELECT account_manager, total_revenue FROM v_account_manager_performance ORDER BY total_revenue DESC LIMIT 1", database="service_express_uk")
+
+Q: executive summary of our UK Cloud portfolio
+A: query("SELECT * FROM v_executive_summary", database="service_express_uk")
 
 After getting results, give a concise business answer. Format all monetary values in GBP (£)."""
 
