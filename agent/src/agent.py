@@ -67,6 +67,19 @@ Q: Give me an executive summary of our contract portfolio
 A: query("SELECT COUNT(*) as total_contracts, SUM(annual_value_usd) as total_annual_value, AVG(annual_value_usd) as avg_contract_value, COUNT(DISTINCT status) as status_types FROM v_contract_details")
 → Then answer directly with the numbers, no more queries
 
+SERVICE EXPRESS UK EXAMPLES (use database: "service_express_uk"):
+Q: get top 5 UK cloud customers
+A: query("SELECT customer_name, total_monthly_value FROM v_customer_portfolio_latest ORDER BY total_monthly_value DESC LIMIT 5", database="service_express_uk")
+
+Q: top 5 services by revenue
+A: query("SELECT service_name, SUM(monthly_total) as total_revenue FROM v_service_breakdown GROUP BY service_name ORDER BY total_revenue DESC LIMIT 5", database="service_express_uk")
+
+Q: contracts managed by Theon Greyjoy
+A: query("SELECT customer_name, contract_number, contract_total_monthly FROM v_contract_summary WHERE account_manager = 'Theon Greyjoy'", database="service_express_uk")
+
+Q: upcoming renewals in next 90 days
+A: query("SELECT customer_name, contract_number, days_to_renewal, contract_total_monthly FROM v_renewal_pipeline ORDER BY days_to_renewal ASC", database="service_express_uk")
+
 After getting results, give a concise business answer."""
 
 TOOLS = [
