@@ -11,7 +11,7 @@ metadata:
     # Rate limiting - OCP 4.14+ compatible annotations
     haproxy.router.openshift.io/rate-limit-connections.concurrent-tcp: "10"
     haproxy.router.openshift.io/rate-limit-connections.rate-http: "20"
-    haproxy.router.openshift.io/timeout: "120s"
+    haproxy.router.openshift.io/timeout: "600s"
     # Disable HTTP/2 to avoid SSE buffering issues with HAProxy
     haproxy.router.openshift.io/disable_cookies: "true"
 spec:
