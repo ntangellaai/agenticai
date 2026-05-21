@@ -110,10 +110,13 @@ UI_TEMPLATE = """
             status.textContent = 'Thinking...';
 
             try {
+                const ctrl = new AbortController();
+                setTimeout(() => ctrl.abort(), 600000); // 600s timeout to match route
                 const res = await fetch('/api/ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: q })
+                    body: JSON.stringify({ question: q }),
+                    signal: ctrl.signal
                 });
                 let data;
                 const text = await res.text();
