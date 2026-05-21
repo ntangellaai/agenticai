@@ -1,0 +1,142 @@
+# MCP Server: accept connections from agent, connect to PostgreSQL
+# SEUK MCP Server only (port 3001)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcp-server-policy
+  namespace: agenticai-demo
+  labels:
+    app.kubernetes.io/part-of: agenticai-demo
+    app.kubernetes.io/component: mcp-server
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-server-seuk
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Agent can connect to SEUK MCP server on port 3001
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: agent
+      ports:
+        - port: 3001
+          protocol: TCP
+  egress:
+    # MCP server can connect to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+      ports:
+        - port: 5432
+          protocol: TCP
+    # DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-dns
+      ports:
+        - port: 5353
+          protocol: UDP
+        - port: 5353
+          protocol: TCP
+
+---
+# Allow PostgreSQL to receive connections from SEUK MCP server only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-allow-mcp-only
+  namespace: agenticai-demo
+  labels:
+    app.kubernetes.io/part-of: agenticai-demo
+    app.kubernetes.io/component: database
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mcp-server-seuk
+      ports:
+        - port: 5432
+          protocol: TCP
+  # PostgreSQL does not need egress (no outbound connections)
+  egress: []
+
+---
+# Agent: accept from OpenShift router, connect to SEUK MCP server and local LLM (llm namespace)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agent-policy
+  namespace: agenticai-demo
+  labels:
+    app.kubernetes.io/part-of: agenticai-demo
+    app.kubernetes.io/component: agent
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: agent
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from OpenShift router (ingress controller)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network.openshift.io/policy-group: ingress
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    # Agent can connect to SEUK MCP server
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mcp-server-seuk
+      ports:
+        - port: 3001
+          protocol: TCP
+    # Agent can connect to local LLM server in 'llm' namespace
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: llm
+      ports:
+        - port: 8080
+          protocol: TCP
+    # DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshift-dns
+      ports:
+        - port: 5353
+          protocol: UDP
+        - port: 5353
+          protocol: TCP
+
+---
+# Default deny all traffic in namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-default
+  namespace: agenticai-demo
+  labels:
+    app.kubernetes.io/part-of: agenticai-demo
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

@@ -36,8 +36,6 @@ spec:
               name: http
           env:
             - name: MCP_SERVER_URL
-              value: "http://mcp-server-svc:3000"
-            - name: MCP_SERVER_SEUK_URL
               value: "http://mcp-server-seuk-svc:3001"
             - name: LLM_API_KEY
               value: "not-required"

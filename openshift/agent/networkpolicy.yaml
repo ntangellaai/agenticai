@@ -1,4 +1,4 @@
-# Agent: accept from OpenShift router, connect to MCP server and local LLM (llm namespace)
+# Agent: accept from OpenShift router, connect to SEUK MCP server and local LLM (llm namespace)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -24,14 +24,7 @@ spec:
         - port: 8080
           protocol: TCP
   egress:
-    # Agent can connect to MCP servers (enterprise and UK)
-    - to:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/name: mcp-server
-      ports:
-        - port: 3000
-          protocol: TCP
+    # Agent can connect to SEUK MCP server
     - to:
         - podSelector:
             matchLabels:

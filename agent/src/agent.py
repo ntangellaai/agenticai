@@ -1,5 +1,5 @@
 """
-Enterprise Agent - Orchestrates LLM + MCP tool calls for business question answering.
+Service Express UK Agent - Orchestrates LLM + MCP tool calls for UK Cloud business analytics.
 """
 
 import json
@@ -11,65 +11,22 @@ from mcp_client import MCPClient
 
 logger = logging.getLogger("agent.core")
 
-SYSTEM_PROMPT = """You are a SQL analyst. Answer business questions by querying PostgreSQL databases using the query tool. Always call query immediately with a SQL SELECT statement. Never explain before querying.
+SYSTEM_PROMPT = """You are a SQL analyst for Service Express UK. Answer business questions by querying the UK Cloud PostgreSQL database using the query tool. Always call query immediately with a SQL SELECT statement. Never explain before querying.
 
 RULES:
 1. Call query immediately with one SELECT to get data
 2. After the first query returns results, answer the user directly — do NOT make additional queries unless data is insufficient
 3. If you get empty results or a column error, call describe_table to check exact columns, then retry
 
-DATABASE SELECTION - Use the correct database based on the question:
-- "enterprise" (default): General enterprise contracts, account managers, providers, customers, renewal risks
-- "service_express_uk": UK Cloud services, monthly contract extracts, service breakdowns, UK customers (GoT character account managers)
+NOTE: This is UK Cloud business data - format all monetary values in GBP (£), not USD ($).
 
-ENTERPRISE DATABASE - Views:
-- v_manager_portfolio(manager_name, region, team, total_contracts, total_customers, managed_revenue, avg_contract_value, pending_renewals, open_risks)
-- v_provider_concentration(provider_name, provider_type, tier, contract_count, customer_count, total_annual_value, pct_of_total_spend)
-- v_contract_details(contract_ref, customer_name, segment, provider_name, manager_name, contract_type, annual_value_usd, total_contract_value, status, days_until_expiry)
-- v_renewal_risk_dashboard(contract_ref, customer_name, segment, annual_value_usd, days_until_expiry, risk_score, risk_factors, recommended_action, manager_name)
-- v_annual_customer_spend(customer_name, segment, fiscal_year, annual_spend, yoy_growth_pct)
-- v_customer_overview(customer_name, segment, industry, region, total_contracts, active_contracts, total_active_annual_value)
-- v_support_revenue_risk(customer_name, segment, active_revenue, total_tickets, high_sev_tickets, open_tickets, avg_resolution_hours)
-- v_segment_summary(segment, customer_count, active_contracts, segment_revenue, avg_contract_value, open_risks)
-
-SERVICE EXPRESS UK DATABASE - Views:
+AVAILABLE VIEWS:
 - v_contract_summary(extract_month, month_label, customer_name, customer_ref, segment, sub_segment, account_manager, contract_number, line_of_business, contract_end, contract_length_months, contract_total_monthly, discount_applied, discount_pct)
 - v_service_breakdown(extract_month, month_label, customer_name, segment, account_manager, contract_number, contract_end, discount_pct, service_name, service_line, quantity, monthly_total)
 - v_customer_portfolio_latest(customer_name, segment, account_manager, contract_count, total_monthly_value, earliest_renewal, latest_renewal)
 - v_renewal_pipeline(customer_name, segment, account_manager, contract_number, contract_end, days_to_renewal, contract_total_monthly, discount_pct, services)
 
-Raw tables only if views insufficient:
-- contracts(contract_id, customer_id, provider_id, manager_id, annual_value_usd, total_contract_value, status, start_date, end_date)
-- customers(customer_id, customer_name, segment, industry, region, status)
-- account_managers(manager_id, manager_name, region, team)
-- providers(provider_id, provider_name, provider_type, tier)
-
 Examples:
-Q: Which account manager owns the most revenue?
-A: query("SELECT manager_name, managed_revenue FROM v_manager_portfolio ORDER BY managed_revenue DESC LIMIT 1")
-
-Q: Which provider has the highest contract value?
-A: query("SELECT provider_name, total_annual_value FROM v_provider_concentration ORDER BY total_annual_value DESC LIMIT 1")
-
-Q: Top 5 customers by spend?
-A: query("SELECT customer_name, annual_spend FROM v_annual_customer_spend WHERE fiscal_year=2024 ORDER BY annual_spend DESC LIMIT 5")
-
-Q: Which customers have high support tickets but also high revenue?
-A: query("SELECT customer_name, active_revenue, open_tickets, high_sev_tickets FROM v_support_revenue_risk ORDER BY active_revenue DESC LIMIT 10")
-
-Q: What is the revenue for customer X?
-A: query("SELECT customer_name, total_active_annual_value FROM v_customer_overview WHERE customer_name ILIKE '%X%'")
-
-Q: What contracts does customer X have?
-A: query("SELECT contract_ref, provider_name, annual_value_usd, status, days_until_expiry FROM v_contract_details WHERE customer_name ILIKE '%X%'")
-
-Q: Give me an executive summary of our contract portfolio
-A: query("SELECT COUNT(*) as total_contracts, SUM(annual_value_usd) as total_annual_value, AVG(annual_value_usd) as avg_contract_value, COUNT(DISTINCT status) as status_types FROM v_contract_details")
-→ Then answer directly with the numbers, no more queries
-
-SERVICE EXPRESS UK EXAMPLES (use database: "service_express_uk"):
-Note: SEUK is UK Cloud business - format all monetary values in GBP (£), not USD ($).
-
 Q: get top 5 UK cloud customers
 A: query("SELECT customer_name, total_monthly_value FROM v_customer_portfolio_latest ORDER BY total_monthly_value DESC LIMIT 5", database="service_express_uk")
 
@@ -82,7 +39,7 @@ A: query("SELECT customer_name, contract_number, contract_total_monthly FROM v_c
 Q: upcoming renewals in next 90 days
 A: query("SELECT customer_name, contract_number, days_to_renewal, contract_total_monthly FROM v_renewal_pipeline ORDER BY days_to_renewal ASC", database="service_express_uk")
 
-After getting results, give a concise business answer. Format currency values appropriately: use £ for UK Cloud (SEUK) queries, $ for Enterprise queries."""
+After getting results, give a concise business answer. Format all monetary values in GBP (£)."""
 
 TOOLS = [
     {
@@ -99,8 +56,8 @@ TOOLS = [
                     },
                     "database": {
                         "type": "string",
-                        "description": "Database to query: 'enterprise' (default) for general contracts, 'service_express_uk' for UK Cloud services",
-                        "enum": ["enterprise", "service_express_uk"]
+                        "description": "Database to query (always 'service_express_uk' for UK Cloud data)",
+                        "enum": ["service_express_uk"]
                     }
                 },
                 "required": ["sql"]
@@ -127,8 +84,8 @@ TOOLS = [
 ]
 
 
-class EnterpriseAgent:
-    """Orchestrates LLM reasoning with MCP tool execution."""
+class SEUKAgent:
+    """Orchestrates LLM reasoning with MCP tool execution for Service Express UK."""
 
     def __init__(
         self,
@@ -138,15 +95,13 @@ class EnterpriseAgent:
         llm_model: str,
         max_tool_calls: int = 5,
         llm_timeout: int = 120,
-        mcp_server_seuk_url: str = None,
     ):
         self.mcp_client = MCPClient(mcp_server_url)
-        self.mcp_client_seuk = MCPClient(mcp_server_seuk_url) if mcp_server_seuk_url else None
         self.llm = OpenAI(
             base_url=llm_endpoint,
             api_key=llm_api_key,
-            timeout=llm_timeout,  # llama.cpp on Power10 may need longer inference time
-            max_retries=0,  # Don't retry on 500 — llama.cpp returns 500 when slots are full
+            timeout=llm_timeout,
+            max_retries=0,
         )
         self.model = llm_model
         self.max_tool_calls = max_tool_calls
@@ -166,22 +121,13 @@ class EnterpriseAgent:
     def _call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
         """Execute a tool call via MCP client."""
         try:
-            # Determine which database to query (default to enterprise)
-            database = arguments.get("database", "enterprise")
-            
-            # Select the appropriate MCP client
-            if database == "service_express_uk" and self.mcp_client_seuk:
-                mcp_client = self.mcp_client_seuk
-            else:
-                mcp_client = self.mcp_client
-            
             if tool_name == "query":
                 sql = arguments.get("sql", "")
                 if not self._validate_sql(sql):
                     return json.dumps({"error": "Query rejected: only SELECT statements allowed"})
-                return mcp_client.call_tool("query", {"sql": sql})
+                return self.mcp_client.call_tool("query", {"sql": sql})
             elif tool_name == "describe_table":
-                return mcp_client.call_tool("describe_table", arguments)
+                return self.mcp_client.call_tool("describe_table", arguments)
             else:
                 return json.dumps({"error": f"Unknown tool: {tool_name}"})
         except Exception as e:

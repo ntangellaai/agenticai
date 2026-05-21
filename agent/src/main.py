@@ -1,16 +1,15 @@
 """
-Enterprise Agentic AI Demo - Agent Web Server
-Flask-based UI and API for business question answering via MCP.
+Service Express UK AI Demo - Agent Web Server
+Flask-based UI and API for UK Cloud business analytics via MCP.
 """
 
 import os
 import logging
 from flask import Flask, request, jsonify, render_template_string
-from agent import EnterpriseAgent
+from agent import SEUKAgent
 
 # Configuration
-MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://localhost:3000")
-MCP_SERVER_SEUK_URL = os.environ.get("MCP_SERVER_SEUK_URL", "http://mcp-server-seuk-svc:3001")
+MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://mcp-server-seuk-svc:3001")
 LLM_ENDPOINT = os.environ.get("LLM_ENDPOINT", "http://llm-svc.llm.svc.cluster.local:8080/v1")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MODEL", "ibm/granite-3-8b-instruct")
@@ -29,9 +28,8 @@ logger = logging.getLogger("agent")
 app = Flask(__name__)
 
 # Agent instance
-agent = EnterpriseAgent(
+agent = SEUKAgent(
     mcp_server_url=MCP_SERVER_URL,
-    mcp_server_seuk_url=MCP_SERVER_SEUK_URL,
     llm_endpoint=LLM_ENDPOINT,
     llm_api_key=LLM_API_KEY,
     llm_model=LLM_MODEL,
@@ -75,8 +73,8 @@ UI_TEMPLATE = """
 </head>
 <body>
     <div class="header">
-        <h1>Enterprise AI Assistant</h1>
-        <div class="subtitle">Powered by PostgreSQL MCP on IBM Power (ppc64le) | OpenShift</div>
+        <h1>Service Express UK AI Assistant</h1>
+        <div class="subtitle">UK Cloud Business Analytics | Powered by PostgreSQL MCP on IBM Power (ppc64le) | OpenShift</div>
     </div>
     <div class="container">
         <div class="chat-area" id="chat"></div>
@@ -87,12 +85,12 @@ UI_TEMPLATE = """
         <div class="status" id="status"></div>
         <div class="examples">
             <h3>Example Questions:</h3>
-            <button onclick="setQ('Why did contract value increase for TechVantage this year?')">Why did contract value increase for TechVantage this year?</button>
-            <button onclick="setQ('Which customers are at highest renewal risk?')">Which customers are at highest renewal risk?</button>
-            <button onclick="setQ('Which provider has the highest total contract value?')">Which provider has the highest total contract value?</button>
-            <button onclick="setQ('Which account manager owns the most revenue?')">Which account manager owns the most revenue?</button>
-            <button onclick="setQ('Which customers have high support tickets but also high revenue?')">Which customers have high support tickets but also high revenue?</button>
-            <button onclick="setQ('Give me an executive summary of our contract portfolio')">Give me an executive summary of our contract portfolio</button>
+            <button onclick="setQ('Top 5 UK cloud customers by monthly value')">Top 5 UK cloud customers by monthly value</button>
+            <button onclick="setQ('Which services generate the most revenue?')">Which services generate the most revenue?</button>
+            <button onclick="setQ('Contracts managed by Theon Greyjoy')">Contracts managed by Theon Greyjoy</button>
+            <button onclick="setQ('Upcoming contract renewals in next 90 days')">Upcoming contract renewals in next 90 days</button>
+            <button onclick="setQ('Total monthly revenue by customer segment')">Total monthly revenue by customer segment</button>
+            <button onclick="setQ('Give me an executive summary of our UK Cloud portfolio')">Give me an executive summary of our UK Cloud portfolio</button>
         </div>
     </div>
     <script>
