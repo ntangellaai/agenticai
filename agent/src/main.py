@@ -105,84 +105,36 @@ UI_TEMPLATE = """
             const q = input.value.trim();
             if (!q) return;
 
-            // Add user message
             chat.innerHTML += '<div class="message user"><div class="role">You</div><div class="content">' + escapeHtml(q) + '</div></div>';
             input.value = '';
             btn.disabled = true;
-            
-            // Create assistant message container
-            const assistantDiv = document.createElement('div');
-            assistantDiv.className = 'message assistant';
-            assistantDiv.innerHTML = '<div class="role">Assistant</div><div class="content" id="current-answer"></div><div class="tool-calls" id="current-tools"></div>';
-            chat.appendChild(assistantDiv);
-            const answerDiv = document.getElementById('current-answer');
-            const toolsDiv = document.getElementById('current-tools');
-            toolsDiv.style.display = 'none';
-            
+            status.textContent = 'Thinking...';
+
             try {
                 const ctrl = new AbortController();
                 setTimeout(() => ctrl.abort(), 600000);
-                
-                const res = await fetch('/api/ask/stream', {
+                const res = await fetch('/api/ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ question: q }),
                     signal: ctrl.signal
                 });
-                
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder();
-                let toolsUsed = [];
-                let buffer = '';
-                
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop(); // Keep incomplete line in buffer
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('event: ')) {
-                            const eventType = line.slice(7);
-                            const dataLine = lines[lines.indexOf(line) + 1];
-                            if (dataLine && dataLine.startsWith('data: ')) {
-                                try {
-                                    const data = JSON.parse(dataLine.slice(6));
-                                    
-                                    if (eventType === 'status') {
-                                        status.textContent = data.message;
-                                    } else if (eventType === 'tool') {
-                                        toolsUsed.push(data.tool);
-                                        toolsDiv.textContent = 'Querying: ' + data.arguments?.sql?.substring(0, 60) + '...';
-                                        toolsDiv.style.display = 'block';
-                                    } else if (eventType === 'tool_result') {
-                                        toolsDiv.textContent = 'Tools used: ' + toolsUsed.join(', ');
-                                    } else if (eventType === 'answer') {
-                                        answerDiv.textContent += data.chunk;
-                                        chat.scrollTop = chat.scrollHeight;
-                                        if (data.done) {
-                                            status.textContent = '';
-                                        }
-                                    } else if (eventType === 'error') {
-                                        answerDiv.textContent = 'Error: ' + data.message;
-                                        status.textContent = '';
-                                    }
-                                } catch (e) {
-                                    console.error('Parse error:', e);
-                                }
-                            }
-                        }
-                    }
+                let data;
+                const text = await res.text();
+                try { data = JSON.parse(text); } catch(_) {
+                    data = { answer: res.status === 504 || res.status === 502
+                        ? 'The request timed out. The language model is busy - please wait 30 seconds and try again.'
+                        : 'Unexpected server error (status ' + res.status + '). Please try again.' };
                 }
-                
-                // Remove IDs for next message
-                answerDiv.removeAttribute('id');
-                toolsDiv.removeAttribute('id');
-                
+                let html = '<div class="message assistant"><div class="role">Assistant</div>';
+                html += '<div class="content">' + escapeHtml(data.answer || data.error || 'No response') + '</div>';
+                if (data.tool_calls && data.tool_calls.length > 0) {
+                    html += '<div class="tool-calls">Tools used: ' + data.tool_calls.map(t => t.tool).join(', ') + '</div>';
+                }
+                html += '</div>';
+                chat.innerHTML += html;
             } catch (e) {
-                answerDiv.textContent = 'Network error: ' + e.message;
+                chat.innerHTML += '<div class="message assistant"><div class="role">Error</div><div class="content">Network error: ' + e.message + '</div></div>';
             }
 
             btn.disabled = false;
