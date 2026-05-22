@@ -162,6 +162,7 @@ class SEUKAgent:
                     tool_choice=tool_choice,
                     temperature=0.1,
                     max_tokens=768,
+                    extra_body={"cache_prompt": True, "n_keep": 150},
                 )
             except APIStatusError as e:
                 if e.status_code == 500:
@@ -264,6 +265,7 @@ class SEUKAgent:
                     tool_choice=tool_choice,
                     temperature=0.1,
                     max_tokens=768,
+                    extra_body={"cache_prompt": True, "n_keep": 150},
                 )
             except APIStatusError as e:
                 if e.status_code == 500:
