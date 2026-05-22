@@ -33,6 +33,11 @@ AVAILABLE VIEWS:
 - v_discount_analysis(discount_applied, contract_count, customer_count, total_monthly_value, avg_discount_pct, min_discount_pct, max_discount_pct)
 - v_top_customers(customer_name, segment, account_manager, contract_count, total_monthly_value, earliest_renewal, latest_renewal, revenue_rank)
 - v_customer_service_mix(customer_name, segment, service_count, services_used, total_service_revenue)
+- v_service_monthly_trends(extract_month, month_label, service_name, customer_count, contract_count, monthly_revenue, total_quantity)
+- v_service_performance_6m(service_name, total_revenue_6m, avg_monthly_revenue, peak_customers, min_customers, total_quantity_sold, revenue_rank)
+- v_service_decline_12m(service_name, revenue_first_6m, revenue_last_6m, revenue_decline, revenue_decline_pct, customers_first_6m, customers_last_6m, customer_decline, decline_rank_revenue, decline_rank_customers)
+- v_low_service_customers(customer_name, segment, account_manager, service_count, services_used, total_service_revenue, service_category)
+- v_service_count_distribution(service_category, customer_count, total_revenue, avg_revenue)
 
 VIEW USAGE GUIDE:
 - v_customer_portfolio_latest: Use for customer/portfolio analysis (has total_monthly_value per customer, NO contract_total_monthly)
@@ -47,6 +52,10 @@ VIEW USAGE GUIDE:
 - v_discount_analysis: USE THIS for "discount" questions - already grouped by discount_applied
 - v_top_customers: USE THIS for "top customers" questions - already ranked with revenue_rank
 - v_customer_service_mix: USE THIS for "what services does X use" questions
+- v_service_performance_6m: USE THIS for "most sold service" or "service performance" questions - already filtered to last 6 months
+- v_service_decline_12m: USE THIS for "declined most" questions - has both revenue and customer decline metrics pre-calculated
+- v_low_service_customers: USE THIS for "customers with 3 or fewer services" questions
+- v_service_count_distribution: USE THIS for "how many customers by service count" questions
 
 Examples:
 Q: get top 5 UK cloud customers
@@ -69,6 +78,18 @@ A: query("SELECT account_manager, total_revenue FROM v_account_manager_performan
 
 Q: executive summary of our UK Cloud portfolio
 A: query("SELECT * FROM v_executive_summary", database="service_express_uk")
+
+Q: what service have we sold the most over the last 6 months
+A: query("SELECT service_name, total_revenue_6m, total_quantity_sold FROM v_service_performance_6m WHERE revenue_rank = 1", database="service_express_uk")
+
+Q: which service has declined the most in revenue last 12 months
+A: query("SELECT service_name, revenue_decline, revenue_decline_pct FROM v_service_decline_12m WHERE decline_rank_revenue = 1", database="service_express_uk")
+
+Q: how many customers take 3 or less services
+A: query("SELECT COUNT(*) as customer_count, SUM(total_service_revenue) as total_revenue FROM v_low_service_customers", database="service_express_uk")
+
+Q: show me customers with low service adoption
+A: query("SELECT customer_name, service_count, services_used, total_service_revenue FROM v_low_service_customers ORDER BY total_service_revenue DESC LIMIT 10", database="service_express_uk")
 
 After getting results, give a concise business answer. Format all monetary values in GBP (£)."""
 
@@ -258,3 +279,100 @@ class SEUKAgent:
             "tool_calls": tool_calls_log,
             "warning": "Max tool calls reached",
         }
+
+    def answer_stream(self, question: str):
+        """Process a user question through the agent loop with streaming support.
+        Yields SSE events: status updates, tool calls, and answer chunks."""
+        import time
+
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": question},
+        ]
+
+        tool_calls_log = []
+        iterations = 0
+
+        # Yield initial status
+        yield f"event: status\ndata: {json.dumps({'message': 'Thinking...'})}\n\n"
+
+        while iterations < self.max_tool_calls:
+            if len(messages) > 8:
+                messages = messages[:2] + messages[-6:]
+            iterations += 1
+
+            tool_choice = "required" if iterations == 1 else "auto"
+
+            try:
+                yield f"event: status\ndata: {json.dumps({'message': f'Querying database (step {iterations})...'})}\n\n"
+                time.sleep(0.1)  # Allow client to receive status
+
+                response = self.llm.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    tools=TOOLS,
+                    tool_choice=tool_choice,
+                    temperature=0.1,
+                    max_tokens=768,
+                )
+            except APIStatusError as e:
+                if e.status_code == 500:
+                    yield f"event: error\ndata: {json.dumps({'message': 'LLM server busy, please retry'})}\n\n"
+                    return
+                yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
+                return
+            except Exception as e:
+                yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
+                return
+
+            choice = response.choices[0]
+            message = choice.message
+
+            # If no tool calls, we have our final answer
+            if not message.tool_calls:
+                # Stream the answer in chunks
+                answer = message.content or "I wasn't able to generate a response."
+                # Split into ~50 char chunks for smoother streaming
+                chunk_size = 50
+                for i in range(0, len(answer), chunk_size):
+                    chunk = answer[i:i+chunk_size]
+                    yield f"event: answer\ndata: {json.dumps({'chunk': chunk, 'done': i + chunk_size >= len(answer)})}\n\n"
+                    time.sleep(0.05)  # Small delay for natural feeling
+                return
+
+            # Process tool calls
+            messages.append(message.model_dump())
+
+            for tool_call in message.tool_calls:
+                fn_name = tool_call.function.name
+                try:
+                    fn_args = json.loads(tool_call.function.arguments)
+                except json.JSONDecodeError:
+                    fn_args = {}
+
+                logger.info(f"Tool call: {fn_name}({json.dumps(fn_args)[:200]})")
+                yield f"event: tool\ndata: {json.dumps({'tool': fn_name, 'arguments': fn_args})}\n\n"
+                time.sleep(0.1)
+
+                result = self._call_tool(fn_name, fn_args)
+                logger.info(f"Tool result: {result[:300]}")
+
+                tool_calls_log.append({
+                    "tool": fn_name,
+                    "arguments": fn_args,
+                    "result_preview": result[:200] if len(result) > 200 else result,
+                })
+
+                # Yield tool result summary
+                result_data = json.loads(result) if result.startswith('{') else {"result": result[:100]}
+                yield f"event: tool_result\ndata: {json.dumps({'tool': fn_name, 'result': result_data})}\n\n"
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result,
+                })
+
+        # Hit max iterations
+        yield f"event: answer\ndata: {json.dumps({'chunk': 'I reached the maximum number of queries. Here is what I found:', 'done': False})}\n\n"
+        yield f"event: answer\ndata: {json.dumps({'chunk': '', 'done': True})}\n\n"

@@ -114,6 +114,114 @@ SELECT
 FROM v_service_breakdown
 GROUP BY customer_name, segment;
 
+-- View 9: Service trends by month (for time-based trend analysis)
+CREATE OR REPLACE VIEW v_service_monthly_trends AS
+SELECT 
+    extract_month,
+    month_label,
+    service_name,
+    COUNT(DISTINCT customer_name) as customer_count,
+    COUNT(DISTINCT contract_number) as contract_count,
+    SUM(monthly_total) as monthly_revenue,
+    SUM(quantity) as total_quantity
+FROM v_service_breakdown
+GROUP BY extract_month, month_label, service_name
+ORDER BY extract_month DESC, monthly_revenue DESC;
+
+-- View 10: Service performance last 6 months (for "most sold" questions)
+CREATE OR REPLACE VIEW v_service_performance_6m AS
+SELECT 
+    service_name,
+    SUM(monthly_revenue) as total_revenue_6m,
+    AVG(monthly_revenue) as avg_monthly_revenue,
+    MAX(customer_count) as peak_customers,
+    MIN(customer_count) as min_customers,
+    MAX(total_quantity) as total_quantity_sold,
+    ROW_NUMBER() OVER (ORDER BY SUM(monthly_revenue) DESC) as revenue_rank
+FROM v_service_monthly_trends
+WHERE extract_month >= TO_CHAR(CURRENT_DATE - INTERVAL '6 months', 'YYYY-MM')
+GROUP BY service_name
+ORDER BY total_revenue_6m DESC;
+
+-- View 11: Service decline analysis 12 months (for "declined most" questions)
+CREATE OR REPLACE VIEW v_service_decline_12m AS
+WITH first_6m AS (
+    SELECT 
+        service_name,
+        SUM(monthly_revenue) as revenue_first_6m,
+        AVG(customer_count) as customers_first_6m
+    FROM v_service_monthly_trends
+    WHERE extract_month >= TO_CHAR(CURRENT_DATE - INTERVAL '12 months', 'YYYY-MM')
+      AND extract_month < TO_CHAR(CURRENT_DATE - INTERVAL '6 months', 'YYYY-MM')
+    GROUP BY service_name
+),
+last_6m AS (
+    SELECT 
+        service_name,
+        SUM(monthly_revenue) as revenue_last_6m,
+        AVG(customer_count) as customers_last_6m
+    FROM v_service_monthly_trends
+    WHERE extract_month >= TO_CHAR(CURRENT_DATE - INTERVAL '6 months', 'YYYY-MM')
+    GROUP BY service_name
+)
+SELECT 
+    COALESCE(f.service_name, l.service_name) as service_name,
+    f.revenue_first_6m,
+    l.revenue_last_6m,
+    f.revenue_first_6m - l.revenue_last_6m as revenue_decline,
+    CASE WHEN f.revenue_first_6m > 0 
+         THEN ROUND(((f.revenue_first_6m - l.revenue_last_6m) / f.revenue_first_6m * 100), 2)
+         ELSE 0 
+    END as revenue_decline_pct,
+    f.customers_first_6m,
+    l.customers_last_6m,
+    COALESCE(f.customers_first_6m, 0) - COALESCE(l.customers_last_6m, 0) as customer_decline,
+    ROW_NUMBER() OVER (ORDER BY f.revenue_first_6m - l.revenue_last_6m DESC) as decline_rank_revenue,
+    ROW_NUMBER() OVER (ORDER BY COALESCE(f.customers_first_6m, 0) - COALESCE(l.customers_last_6m, 0) DESC) as decline_rank_customers
+FROM first_6m f
+FULL OUTER JOIN last_6m l ON f.service_name = l.service_name
+WHERE f.revenue_first_6m > 0 OR l.revenue_last_6m > 0
+ORDER BY revenue_decline DESC;
+
+-- View 12: Low service customers (for "3 or fewer services" questions)
+CREATE OR REPLACE VIEW v_low_service_customers AS
+SELECT 
+    customer_name,
+    segment,
+    account_manager,
+    service_count,
+    services_used,
+    total_service_revenue,
+    CASE 
+        WHEN service_count = 1 THEN 'Single Service'
+        WHEN service_count <= 3 THEN 'Low (2-3 Services)'
+        ELSE 'Multi-Service (4+)'
+    END as service_category
+FROM v_customer_service_mix
+WHERE service_count <= 3
+ORDER BY service_count, total_service_revenue DESC;
+
+-- View 13: Service count distribution (for quick stats)
+CREATE OR REPLACE VIEW v_service_count_distribution AS
+SELECT 
+    service_category,
+    COUNT(*) as customer_count,
+    SUM(total_service_revenue) as total_revenue,
+    AVG(total_service_revenue) as avg_revenue
+FROM (
+    SELECT 
+        customer_name,
+        total_service_revenue,
+        CASE 
+            WHEN service_count = 1 THEN 'Single Service'
+            WHEN service_count <= 3 THEN 'Low (2-3 Services)'
+            ELSE 'Multi-Service (4+)'
+        END as service_category
+    FROM v_customer_service_mix
+) sub
+GROUP BY service_category
+ORDER BY customer_count DESC;
+
 -- Grant permissions
 GRANT SELECT ON v_revenue_by_segment TO mcp_readonly;
 GRANT SELECT ON v_account_manager_performance TO mcp_readonly;
@@ -123,3 +231,8 @@ GRANT SELECT ON v_executive_summary TO mcp_readonly;
 GRANT SELECT ON v_discount_analysis TO mcp_readonly;
 GRANT SELECT ON v_top_customers TO mcp_readonly;
 GRANT SELECT ON v_customer_service_mix TO mcp_readonly;
+GRANT SELECT ON v_service_monthly_trends TO mcp_readonly;
+GRANT SELECT ON v_service_performance_6m TO mcp_readonly;
+GRANT SELECT ON v_service_decline_12m TO mcp_readonly;
+GRANT SELECT ON v_low_service_customers TO mcp_readonly;
+GRANT SELECT ON v_service_count_distribution TO mcp_readonly;
