@@ -186,20 +186,21 @@ ORDER BY revenue_decline DESC;
 -- View 12: Low service customers (for "3 or fewer services" questions)
 CREATE OR REPLACE VIEW v_low_service_customers AS
 SELECT 
-    customer_name,
-    segment,
-    account_manager,
-    service_count,
-    services_used,
-    total_service_revenue,
+    csm.customer_name,
+    csm.segment,
+    cpl.account_manager,
+    csm.service_count,
+    csm.services_used,
+    csm.total_service_revenue,
     CASE 
-        WHEN service_count = 1 THEN 'Single Service'
-        WHEN service_count <= 3 THEN 'Low (2-3 Services)'
+        WHEN csm.service_count = 1 THEN 'Single Service'
+        WHEN csm.service_count <= 3 THEN 'Low (2-3 Services)'
         ELSE 'Multi-Service (4+)'
     END as service_category
-FROM v_customer_service_mix
-WHERE service_count <= 3
-ORDER BY service_count, total_service_revenue DESC;
+FROM v_customer_service_mix csm
+LEFT JOIN v_customer_portfolio_latest cpl ON csm.customer_name = cpl.customer_name
+WHERE csm.service_count <= 3
+ORDER BY csm.service_count, csm.total_service_revenue DESC;
 
 -- View 13: Service count distribution (for quick stats)
 CREATE OR REPLACE VIEW v_service_count_distribution AS
