@@ -24,7 +24,7 @@ Rules:
 Base views: v_contract_summary,v_service_breakdown,v_customer_portfolio_latest,v_renewal_pipeline
 Analytics views: v_revenue_by_segment,v_account_manager_performance,v_service_revenue_summary,v_renewal_urgency,v_executive_summary,v_discount_analysis,v_top_customers,v_customer_service_mix,v_service_monthly_trends,v_service_performance_6m,v_service_decline_12m,v_low_service_customers,v_service_count_distribution
 
-View hints: v_customer_portfolio_latest=customer totals(total_monthly_value), v_contract_summary=contract level(contract_total_monthly), v_revenue_by_segment=aggregated segments, v_account_manager_performance=AM ranking, v_service_revenue_summary=service ranking, v_renewal_urgency=renewal categories, v_executive_summary=totals single row, v_discount_analysis=discount groups, v_top_customers=pre-ranked customers, v_service_performance_6m=6mo service sales, v_service_decline_12m=revenue decline 12mo, v_low_service_customers=3 or fewer services, v_service_count_distribution=service count stats
+View hints: v_customer_portfolio_latest=customer totals(total_monthly_value), v_contract_summary=contract level(contract_total_monthly), v_service_breakdown=service line detail(monthly_total,extract_month in YYYY-MM), v_revenue_by_segment=aggregated segments, v_account_manager_performance=AM ranking, v_service_revenue_summary=service ranking, v_renewal_urgency=renewal categories, v_executive_summary=totals single row, v_discount_analysis=discount groups, v_top_customers=pre-ranked customers, v_service_monthly_trends=monthly trends by service(extract_month,monthly_revenue), v_service_performance_6m=6mo service sales, v_service_decline_12m=revenue decline 12mo, v_low_service_customers=3 or fewer services, v_service_count_distribution=service count stats
 
 After results: concise business answer. GBP format."""
 
@@ -51,7 +51,7 @@ DIRECT_ANSWERS = {
                        for i, r in enumerate(rows)]) if rows else "No customer data found."
     },
     # Revenue by segment
-    r"revenue\s+by\s+segment|segment\s+revenue": {
+    r"revenue\s+by\s+segment|segment\s+revenue|monthly\s+revenue\s+by|total.*revenue.*segment": {
         "sql": "SELECT segment, customer_count, total_monthly_revenue FROM v_revenue_by_segment ORDER BY total_monthly_revenue DESC",
         "formatter": lambda rows: "**Revenue by Customer Segment:**\n\n" + 
             "\n".join([f"- **{r['segment']}**: £{float(r['total_monthly_revenue']):,.2f} ({r['customer_count']} customers)" 
@@ -110,6 +110,13 @@ DIRECT_ANSWERS = {
         "formatter": lambda rows: "**Upcoming Renewals:**\n\n" + 
             "\n".join([f"- **{r['urgency_bucket']}**: {r['contract_count']} contracts, £{float(r['total_monthly_value']):,.2f} (avg {r['avg_days_to_renewal']} days)" 
                        for r in rows]) if rows else "No upcoming renewals found."
+    },
+    # Revenue change/year trends
+    r"revenue\s+changed|changed\s+over|year\s+over\s+year|last\s+year|revenue\s+trend": {
+        "sql": "SELECT segment, total_monthly_revenue FROM v_revenue_by_segment ORDER BY total_monthly_revenue DESC",
+        "formatter": lambda rows: "**Current Revenue by Segment (YoY comparison requires specific view):**\n\n" + 
+            "\n".join([f"- **{r['segment']}**: £{float(r['total_monthly_revenue']):,.2f}" 
+                       for r in rows[:5]]) if rows else "No revenue data found."
     },
 }
 
