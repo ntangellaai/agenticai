@@ -80,7 +80,7 @@ DIRECT_ANSWERS = {
         ) if rows else "No account manager data found."
     },
     # Top services
-    r"top\s+services?|best\s+services?|service\s+revenue": {
+    r"top\s+services?|best\s+services?|service\s+revenue|services?\s+(generate|make)|most\s+revenue": {
         "sql": "SELECT service_name, customer_count, total_monthly_revenue FROM v_service_revenue_summary ORDER BY total_monthly_revenue DESC LIMIT 5",
         "formatter": lambda rows: "**Top 5 Services by Revenue:**\n\n" + 
             "\n".join([f"{i+1}. **{r['service_name']}**: £{float(r['total_monthly_revenue']):,.2f} ({r['customer_count']} customers)" 
