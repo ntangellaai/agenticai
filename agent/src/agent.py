@@ -19,7 +19,7 @@ Rules:
 1. Call query immediately with one SELECT
 2. Answer directly after first query result - no more queries unless needed
 3. Use describe_table if column error, then retry
-4. Format money in GBP (£)
+4. Format money columns in GBP (£). Counts/numbers are NOT money - report as plain numbers
 5. Use ILIKE '%term%' for name/service filters (never exact match)
 
 Base views: v_contract_summary,v_service_breakdown,v_customer_portfolio_latest,v_renewal_pipeline
