@@ -25,7 +25,8 @@ Rules:
 Base views: v_contract_summary,v_service_breakdown,v_customer_portfolio_latest,v_renewal_pipeline
 Analytics views: v_revenue_by_segment,v_account_manager_performance,v_service_revenue_summary,v_renewal_urgency,v_executive_summary,v_discount_analysis,v_top_customers,v_customer_service_mix,v_service_monthly_trends,v_service_performance_6m,v_service_decline_12m,v_low_service_customers,v_service_count_distribution
 
-View hints: v_customer_portfolio_latest=customer totals(total_monthly_value), v_contract_summary=contract level(contract_total_monthly), v_service_breakdown=service line detail(monthly_total,extract_month in YYYY-MM), v_revenue_by_segment=aggregated segments, v_account_manager_performance=AM ranking, v_service_revenue_summary=service ranking, v_renewal_urgency=renewal categories, v_executive_summary=totals single row, v_discount_analysis=discount groups, v_top_customers=pre-ranked customers, v_service_monthly_trends=monthly trends by service(extract_month,monthly_revenue), v_service_performance_6m=6mo service sales, v_service_decline_12m=revenue decline 12mo, v_low_service_customers=3 or fewer services, v_service_count_distribution=service count stats
+View hints: v_customer_portfolio_latest=customer totals(NO service_name column), v_contract_summary=contract level(contract_total_monthly,service_name), v_service_breakdown=service line detail(service_name,customer_name,monthly_total,extract_month YYYY-MM), v_revenue_by_segment=aggregated segments, v_account_manager_performance=AM ranking, v_service_revenue_summary=service ranking(service_name), v_renewal_urgency=renewal categories, v_executive_summary=totals single row, v_discount_analysis=discount groups, v_top_customers=pre-ranked customers, v_customer_service_mix=customer services(service_name,customer_name), v_service_monthly_trends=monthly trends(service_name,extract_month,monthly_revenue), v_service_performance_6m=6mo service sales(service_name), v_service_decline_12m=revenue decline 12mo(service_name), v_low_service_customers=3 or fewer services, v_service_count_distribution=service count stats
+IMPORTANT: For queries about a specific service use v_service_breakdown or v_customer_service_mix (they have service_name). v_customer_portfolio_latest does NOT have service_name.
 
 After results: concise business answer. GBP format."""
 
@@ -38,6 +39,7 @@ EXAMPLES_CONTEXT = """Examples of correct queries:
 - Service performance 6m: query("SELECT service_name,total_revenue_6m FROM v_service_performance_6m WHERE revenue_rank=1",database="service_express_uk")
 - Service decline: query("SELECT service_name,revenue_decline_pct FROM v_service_decline_12m WHERE decline_rank_revenue=1",database="service_express_uk")
 - Low service customers: query("SELECT customer_name,service_count FROM v_low_service_customers",database="service_express_uk")
+- Customers for a service: query("SELECT COUNT(DISTINCT customer_name) FROM v_service_breakdown WHERE service_name ILIKE '%Cloud%'",database="service_express_uk")
 
 Now answer this question:"""
 
