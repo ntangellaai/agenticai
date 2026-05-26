@@ -13,7 +13,7 @@ MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://mcp-server-seuk-svc:30
 LLM_ENDPOINT = os.environ.get("LLM_ENDPOINT", "http://llm-svc.llm.svc.cluster.local:8080/v1")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MODEL", "ibm/granite-3-8b-instruct")
-LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", "120"))
+LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", "600"))
 AGENT_PORT = int(os.environ.get("AGENT_PORT", "8080"))
 MAX_QUERY_LENGTH = int(os.environ.get("MAX_QUERY_LENGTH", "2000"))
 
