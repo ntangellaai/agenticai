@@ -153,40 +153,7 @@ async function executeQuery(
 // Table Metadata
 // =============================================================================
 
-const TABLE_DESCRIPTIONS: Record<string, string> = {
-  customers:
-    "Customer records with segment, industry, region, revenue, and status information",
-  contracts:
-    "Contract details linking customers to providers via account managers, with value and date information",
-  contract_events:
-    "Historical events on contracts: expansions, reductions, renewals, price changes, escalations",
-  account_managers:
-    "Account manager team members with region and team assignments",
-  providers:
-    "Third-party providers/vendors with type classification and tier",
-  spend_history:
-    "Quarterly spending records by customer and contract, for year-over-year analysis",
-  support_tickets:
-    "Customer support tickets with severity, category, resolution time",
-  renewal_risks:
-    "Assessed renewal risk scores with factors and recommended actions",
-  document_metadata:
-    "References to contract documents, meeting notes, QBR decks, risk assessments",
-  v_customer_overview: "VIEW: Customer summary with contract counts and active value",
-  v_contract_details:
-    "VIEW: Contracts joined with customer, provider, and manager names",
-  v_annual_customer_spend:
-    "VIEW: Annual spend by customer with year-over-year growth calculation",
-  v_renewal_risk_dashboard:
-    "VIEW: Open renewal risks with contract and customer details",
-  v_manager_portfolio:
-    "VIEW: Account manager portfolio summary with revenue and risk counts",
-  v_provider_concentration:
-    "VIEW: Provider spend concentration analysis",
-  v_support_revenue_risk:
-    "VIEW: Customers with high support tickets correlated with revenue",
-  v_segment_summary: "VIEW: Segment-level aggregations for revenue and risk",
-};
+// Dynamic schema discovery - no hardcoded table list
 
 // =============================================================================
 // MCP Server Setup
@@ -235,18 +202,25 @@ server.tool(
 // Tool: list_tables
 server.tool(
   "list_tables",
-  "List all available tables and views in the enterprise database with descriptions",
+  "List all available tables and views in the database with their types",
   {},
   async () => {
-    const text = JSON.stringify(
-      Object.entries(TABLE_DESCRIPTIONS).map(([name, description]) => ({
-        name,
-        description,
-      })),
-      null,
-      2
-    );
-    return { content: [{ type: "text", text }] };
+    try {
+      const result = await executeQuery(`
+        SELECT table_name, table_type
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        ORDER BY table_type, table_name
+      `);
+      const text = JSON.stringify(result.rows, null, 2);
+      return { content: [{ type: "text", text }] };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return {
+        content: [{ type: "text", text: `Error: ${message}` }],
+        isError: true,
+      };
+    }
   }
 );
 
@@ -268,18 +242,6 @@ server.tool(
       };
     }
 
-    if (!TABLE_DESCRIPTIONS[table]) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: Table '${table}' not found. Use list_tables to see available tables.`,
-          },
-        ],
-        isError: true,
-      };
-    }
-
     try {
       const result = await executeQuery(`
         SELECT column_name, data_type, is_nullable, column_default
@@ -288,10 +250,21 @@ server.tool(
         ORDER BY ordinal_position
       `);
 
+      if (result.rowCount === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: Table '${table}' not found. Use list_tables to see available tables.`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
       const text = JSON.stringify(
         {
           table,
-          description: TABLE_DESCRIPTIONS[table],
           columns: result.rows,
         },
         null,
