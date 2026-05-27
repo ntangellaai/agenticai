@@ -146,12 +146,13 @@ UI_TEMPLATE = """
                     const decoder = new TextDecoder();
                     let buffer = '';
 
+                    const NL = String.fromCharCode(10);
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
 
                         buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split('\n');
+                        const lines = buffer.split(NL);
                         buffer = lines.pop();
 
                         let eventType = '';
