@@ -6,6 +6,7 @@ import json
 import logging
 import re
 from typing import Any
+import httpx
 from openai import OpenAI, APIStatusError  # Used for OpenAI-compatible API (local LLM via vLLM/TGI)
 from mcp_client import MCPClient
 
@@ -203,7 +204,7 @@ class SEUKAgent:
         self.llm = OpenAI(
             base_url=llm_endpoint,
             api_key=llm_api_key,
-            timeout=llm_timeout,
+            timeout=httpx.Timeout(llm_timeout, connect=30.0),
             max_retries=0,
         )
         self.model = llm_model
