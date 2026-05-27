@@ -128,50 +128,65 @@ UI_TEMPLATE = """
                     body: JSON.stringify({ question: q })
                 });
 
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
+                if (!res.ok || !res.body) {
+                    // Fallback to non-streaming
+                    const fallback = await fetch('/api/ask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ question: q })
+                    });
+                    const data = await fallback.json();
+                    contentEl.textContent = data.answer || data.error || 'No response';
+                    if (data.tool_calls && data.tool_calls.length) {
+                        toolsEl.style.display = '';
+                        toolsEl.textContent = 'Tools used: ' + data.tool_calls.map(t => t.tool).join(', ');
+                    }
+                } else {
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
 
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
 
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop();
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
 
-                    let eventType = '';
-                    for (const line of lines) {
-                        if (line.startsWith('event: ')) {
-                            eventType = line.slice(7);
-                        } else if (line.startsWith('data: ') && eventType) {
-                            try {
-                                const data = JSON.parse(line.slice(6));
-                                if (eventType === 'status') {
-                                    status.textContent = data.message || '';
-                                } else if (eventType === 'answer') {
-                                    if (data.chunk) {
-                                        answerText += data.chunk;
-                                        contentEl.textContent = answerText;
-                                        chat.scrollTop = chat.scrollHeight;
+                        let eventType = '';
+                        for (const line of lines) {
+                            if (line.startsWith('event: ')) {
+                                eventType = line.slice(7);
+                            } else if (line.startsWith('data: ') && eventType) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    if (eventType === 'status') {
+                                        status.textContent = data.message || '';
+                                    } else if (eventType === 'answer') {
+                                        if (data.chunk) {
+                                            answerText += data.chunk;
+                                            contentEl.textContent = answerText;
+                                            chat.scrollTop = chat.scrollHeight;
+                                        }
+                                    } else if (eventType === 'tool') {
+                                        if (data.tool && !toolsUsed.includes(data.tool)) toolsUsed.push(data.tool);
+                                        toolsEl.style.display = '';
+                                        toolsEl.textContent = 'Tools used: ' + toolsUsed.join(', ');
+                                        status.textContent = 'Running ' + data.tool + '...';
+                                    } else if (eventType === 'tool_result') {
+                                        status.textContent = 'Processing results...';
+                                    } else if (eventType === 'error') {
+                                        contentEl.textContent = 'Error: ' + (data.message || 'Unknown error');
                                     }
-                                } else if (eventType === 'tool') {
-                                    if (data.tool && !toolsUsed.includes(data.tool)) toolsUsed.push(data.tool);
-                                    toolsEl.style.display = '';
-                                    toolsEl.textContent = 'Tools used: ' + toolsUsed.join(', ');
-                                    status.textContent = 'Running ' + data.tool + '...';
-                                } else if (eventType === 'tool_result') {
-                                    status.textContent = 'Processing results...';
-                                } else if (eventType === 'error') {
-                                    contentEl.textContent = 'Error: ' + (data.message || 'Unknown error');
-                                }
-                            } catch(_) {}
-                            eventType = '';
+                                } catch(_) {}
+                                eventType = '';
+                            }
                         }
                     }
-                }
 
-                if (!answerText) contentEl.textContent = 'No response received.';
+                    if (!answerText) contentEl.textContent = 'No response received.';
+                }
 
             } catch (e) {
                 contentEl.textContent = 'Network error: ' + e.message;
