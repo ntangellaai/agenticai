@@ -3,6 +3,7 @@ Service Express UK AI Demo - Agent Web Server
 Flask-based UI and API for UK Cloud business analytics via MCP.
 """
 
+import json
 import os
 import logging
 from flask import Flask, request, jsonify, render_template_string, Response
@@ -96,7 +97,7 @@ UI_TEMPLATE = """
     <script>
         function setQ(q) { document.getElementById('question').value = q; }
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-        
+
         async function ask() {
             const input = document.getElementById('question');
             const btn = document.getElementById('send');
@@ -110,38 +111,80 @@ UI_TEMPLATE = """
             btn.disabled = true;
             status.textContent = 'Thinking...';
 
+            // Create assistant message container
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message assistant';
+            msgDiv.innerHTML = '<div class="role">Assistant</div><div class="content" id="stream-content"></div><div class="tool-calls" id="stream-tools" style="display:none"></div>';
+            chat.appendChild(msgDiv);
+            const contentEl = document.getElementById('stream-content');
+            const toolsEl = document.getElementById('stream-tools');
+            let toolsUsed = [];
+            let answerText = '';
+
             try {
-                const ctrl = new AbortController();
-                setTimeout(() => ctrl.abort(), 600000);
-                const res = await fetch('/api/ask', {
+                const res = await fetch('/api/ask/stream', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: q }),
-                    signal: ctrl.signal
+                    body: JSON.stringify({ question: q })
                 });
-                let data;
-                const text = await res.text();
-                try { data = JSON.parse(text); } catch(_) {
-                    data = { answer: res.status === 504 || res.status === 502
-                        ? 'The request timed out. The language model is busy - please wait 30 seconds and try again.'
-                        : 'Unexpected server error (status ' + res.status + '). Please try again.' };
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    let eventType = '';
+                    for (const line of lines) {
+                        if (line.startsWith('event: ')) {
+                            eventType = line.slice(7);
+                        } else if (line.startsWith('data: ') && eventType) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (eventType === 'status') {
+                                    status.textContent = data.message || '';
+                                } else if (eventType === 'answer') {
+                                    if (data.chunk) {
+                                        answerText += data.chunk;
+                                        contentEl.textContent = answerText;
+                                        chat.scrollTop = chat.scrollHeight;
+                                    }
+                                } else if (eventType === 'tool') {
+                                    if (data.tool && !toolsUsed.includes(data.tool)) toolsUsed.push(data.tool);
+                                    toolsEl.style.display = '';
+                                    toolsEl.textContent = 'Tools used: ' + toolsUsed.join(', ');
+                                    status.textContent = 'Running ' + data.tool + '...';
+                                } else if (eventType === 'tool_result') {
+                                    status.textContent = 'Processing results...';
+                                } else if (eventType === 'error') {
+                                    contentEl.textContent = 'Error: ' + (data.message || 'Unknown error');
+                                }
+                            } catch(_) {}
+                            eventType = '';
+                        }
+                    }
                 }
-                let html = '<div class="message assistant"><div class="role">Assistant</div>';
-                html += '<div class="content">' + escapeHtml(data.answer || data.error || 'No response') + '</div>';
-                if (data.tool_calls && data.tool_calls.length > 0) {
-                    html += '<div class="tool-calls">Tools used: ' + data.tool_calls.map(t => t.tool).join(', ') + '</div>';
-                }
-                html += '</div>';
-                chat.innerHTML += html;
+
+                if (!answerText) contentEl.textContent = 'No response received.';
+
             } catch (e) {
-                chat.innerHTML += '<div class="message assistant"><div class="role">Error</div><div class="content">Network error: ' + e.message + '</div></div>';
+                contentEl.textContent = 'Network error: ' + e.message;
             }
 
+            // Clean up temp IDs
+            contentEl.removeAttribute('id');
+            toolsEl.removeAttribute('id');
             btn.disabled = false;
             status.textContent = '';
             chat.scrollTop = chat.scrollHeight;
         }
-        
+
         document.getElementById('question').addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
     </script>
 </body>

@@ -344,7 +344,8 @@ class SEUKAgent:
         }
 
     def answer_stream(self, question: str):
-        """Process a user question through the agent loop with streaming support.
+        """Process a user question through the agent loop with TRUE streaming.
+        Uses OpenAI streaming API so tokens appear as they are generated.
         Yields SSE events: status updates, tool calls, and answer chunks."""
         import time
 
@@ -355,7 +356,7 @@ class SEUKAgent:
             yield f"event: status\ndata: {json.dumps({'message': 'Found pre-built answer...'})}\n\n"
             yield f"event: answer\ndata: {json.dumps({'chunk': direct_answer, 'done': True})}\n\n"
             return
-        
+
         # Stable system prompt for KV cache reuse + examples in user message
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -365,7 +366,6 @@ class SEUKAgent:
         tool_calls_log = []
         iterations = 0
 
-        # Yield initial status
         yield f"event: status\ndata: {json.dumps({'message': 'Thinking...'})}\n\n"
 
         while iterations < self.max_tool_calls:
@@ -376,18 +376,56 @@ class SEUKAgent:
             tool_choice = "required" if iterations == 1 else "auto"
 
             try:
-                yield f"event: status\ndata: {json.dumps({'message': f'Querying database (step {iterations})...'})}\n\n"
-                time.sleep(0.1)  # Allow client to receive status
+                yield f"event: status\ndata: {json.dumps({'message': f'Querying LLM (step {iterations})...'})}\n\n"
 
-                response = self.llm.chat.completions.create(
+                stream = self.llm.chat.completions.create(
                     model=self.model,
                     messages=messages,
                     tools=TOOLS,
                     tool_choice=tool_choice,
                     temperature=0.1,
                     max_tokens=768,
+                    stream=True,
                     extra_body={"cache_prompt": True, "n_keep": 150},
                 )
+
+                # Accumulate streamed response
+                content_buffer = ""
+                tool_call_buffers = {}  # index -> {id, name, arguments}
+                finish_reason = None
+
+                for chunk in stream:
+                    delta = chunk.choices[0].delta if chunk.choices else None
+                    if not delta:
+                        continue
+
+                    # Check finish reason
+                    if chunk.choices[0].finish_reason:
+                        finish_reason = chunk.choices[0].finish_reason
+
+                    # Stream content tokens immediately
+                    if delta.content:
+                        content_buffer += delta.content
+                        yield f"event: answer\ndata: {json.dumps({'chunk': delta.content, 'done': False})}\n\n"
+
+                    # Accumulate tool call deltas
+                    if delta.tool_calls:
+                        for tc_delta in delta.tool_calls:
+                            idx = tc_delta.index
+                            if idx not in tool_call_buffers:
+                                tool_call_buffers[idx] = {
+                                    "id": tc_delta.id or "",
+                                    "name": "",
+                                    "arguments": "",
+                                }
+                            if tc_delta.id:
+                                tool_call_buffers[idx]["id"] = tc_delta.id
+                            if tc_delta.function:
+                                if tc_delta.function.name:
+                                    tool_call_buffers[idx]["name"] = tc_delta.function.name
+                                if tc_delta.function.arguments:
+                                    tool_call_buffers[idx]["arguments"] += tc_delta.function.arguments
+
             except APIStatusError as e:
                 if e.status_code == 500:
                     yield f"event: error\ndata: {json.dumps({'message': 'LLM server busy, please retry'})}\n\n"
@@ -398,35 +436,40 @@ class SEUKAgent:
                 yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
                 return
 
-            choice = response.choices[0]
-            message = choice.message
+            # If we got content and no tool calls, finalize the answer
+            if content_buffer and not tool_call_buffers:
+                yield f"event: answer\ndata: {json.dumps({'chunk': '', 'done': True})}\n\n"
+                return
 
-            # If no tool calls, we have our final answer
-            if not message.tool_calls:
-                # Stream the answer in chunks
-                answer = message.content or "I wasn't able to generate a response."
-                # Split into ~50 char chunks for smoother streaming
-                chunk_size = 50
-                for i in range(0, len(answer), chunk_size):
-                    chunk = answer[i:i+chunk_size]
-                    yield f"event: answer\ndata: {json.dumps({'chunk': chunk, 'done': i + chunk_size >= len(answer)})}\n\n"
-                    time.sleep(0.05)  # Small delay for natural feeling
+            # If no tool calls at all, return whatever we have
+            if not tool_call_buffers:
+                answer = content_buffer or "I wasn't able to generate a response."
+                yield f"event: answer\ndata: {json.dumps({'chunk': answer, 'done': True})}\n\n"
                 return
 
             # Process tool calls
-            messages.append(message.model_dump())
+            assistant_msg = {"role": "assistant", "content": content_buffer or None, "tool_calls": []}
+            for idx in sorted(tool_call_buffers.keys()):
+                tc = tool_call_buffers[idx]
+                assistant_msg["tool_calls"].append({
+                    "id": tc["id"],
+                    "type": "function",
+                    "function": {"name": tc["name"], "arguments": tc["arguments"]},
+                })
+            messages.append(assistant_msg)
 
-            for tool_call in message.tool_calls:
-                fn_name = tool_call.function.name
+            for idx in sorted(tool_call_buffers.keys()):
+                tc = tool_call_buffers[idx]
+                fn_name = tc["name"]
                 try:
-                    fn_args = json.loads(tool_call.function.arguments)
+                    fn_args = json.loads(tc["arguments"])
                 except json.JSONDecodeError:
                     fn_args = {}
 
                 logger.info(f"Tool call: {fn_name}({json.dumps(fn_args)[:200]})")
                 yield f"event: tool\ndata: {json.dumps({'tool': fn_name, 'arguments': fn_args})}\n\n"
-                time.sleep(0.1)
 
+                yield f"event: status\ndata: {json.dumps({'message': f'Running {fn_name}...'})}\n\n"
                 result = self._call_tool(fn_name, fn_args)
                 logger.info(f"Tool result: {result[:300]}")
 
@@ -436,13 +479,15 @@ class SEUKAgent:
                     "result_preview": result[:200] if len(result) > 200 else result,
                 })
 
-                # Yield tool result summary
-                result_data = json.loads(result) if result.startswith('{') else {"result": result[:100]}
+                try:
+                    result_data = json.loads(result) if result.startswith('{') else {"result": result[:100]}
+                except json.JSONDecodeError:
+                    result_data = {"result": result[:100]}
                 yield f"event: tool_result\ndata: {json.dumps({'tool': fn_name, 'result': result_data})}\n\n"
 
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": tool_call.id,
+                    "tool_call_id": tc["id"],
                     "content": result,
                 })
 
