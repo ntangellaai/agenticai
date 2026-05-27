@@ -186,7 +186,7 @@ UI_TEMPLATE = """
                         }
                     }
 
-                    if (!answerText) contentEl.textContent = 'No response received.';
+                    if (!answerText && !contentEl.textContent) contentEl.textContent = 'No response received.';
                 }
 
             } catch (e) {
