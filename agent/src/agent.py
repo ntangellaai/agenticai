@@ -379,16 +379,40 @@ class SEUKAgent:
             try:
                 yield f"event: status\ndata: {json.dumps({'message': f'Querying LLM (step {iterations})...'})}\n\n"
 
-                # Non-streaming call with tools (llama.cpp doesn't support stream+tools)
-                response = self.llm.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    tools=TOOLS,
-                    tool_choice=tool_choice,
-                    temperature=0.1,
-                    max_tokens=768,
-                    extra_body={"cache_prompt": True, "n_keep": 150},
-                )
+                # Run LLM call in a thread so we can send keepalive heartbeats
+                import threading
+                llm_result = {"response": None, "error": None}
+
+                def _call_llm():
+                    try:
+                        llm_result["response"] = self.llm.chat.completions.create(
+                            model=self.model,
+                            messages=messages,
+                            tools=TOOLS,
+                            tool_choice=tool_choice,
+                            temperature=0.1,
+                            max_tokens=768,
+                            extra_body={"cache_prompt": True, "n_keep": 150},
+                        )
+                    except Exception as e:
+                        llm_result["error"] = e
+
+                t = threading.Thread(target=_call_llm)
+                t.start()
+
+                # Send heartbeats every 10s while LLM is processing
+                elapsed = 0
+                while t.is_alive():
+                    t.join(timeout=10)
+                    if t.is_alive():
+                        elapsed += 10
+                        yield f": heartbeat {elapsed}s\n\n"
+                        yield f"event: status\ndata: {json.dumps({'message': f'LLM processing (step {iterations}, {elapsed}s elapsed)...'})}\n\n"
+
+                if llm_result["error"]:
+                    raise llm_result["error"]
+
+                response = llm_result["response"]
 
             except APIStatusError as e:
                 if e.status_code == 500:
