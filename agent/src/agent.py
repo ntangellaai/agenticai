@@ -331,7 +331,7 @@ class SEUKAgent:
                     "result_preview": result[:200] if len(result) > 200 else result,
                 })
 
-                result_truncated = result[:2000] + ("..." if len(result) > 2000 else "")
+                result_truncated = result[:4000] + ("..." if len(result) > 4000 else "")
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tool_call.id,
@@ -469,7 +469,7 @@ class SEUKAgent:
                     result_data = {"result": result[:100]}
                 yield f"event: tool_result\ndata: {json.dumps({'tool': fn_name, 'result': result_data})}\n\n"
 
-                result_truncated = result[:2000] + ("..." if len(result) > 2000 else "")
+                result_truncated = result[:4000] + ("..." if len(result) > 4000 else "")
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tool_call.id,
