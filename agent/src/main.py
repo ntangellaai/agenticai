@@ -94,7 +94,7 @@ UI_TEMPLATE = """
             <button onclick="setQ('Give me an executive summary of our UK Cloud portfolio')">Give me an executive summary of our UK Cloud portfolio</button>
         </div>
     </div>
-    <script>
+    {% raw %}<script>
         function setQ(q) { document.getElementById('question').value = q; }
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
@@ -201,7 +201,7 @@ UI_TEMPLATE = """
         }
 
         document.getElementById('question').addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
-    </script>
+    </script>{% endraw %}
 </body>
 </html>
 """
