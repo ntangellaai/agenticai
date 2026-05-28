@@ -340,11 +340,24 @@ class SEUKAgent:
                     "result_preview": result[:200] if len(result) > 200 else result,
                 })
 
-                result_truncated = result[:4000] + ("..." if len(result) > 4000 else "")
+                try:
+                    result_obj = json.loads(result)
+                    cols = result_obj.get("columns", [])
+                    rows = result_obj.get("rows", [])
+                    if cols and rows:
+                        compact = ",".join(cols) + "\n" + "\n".join(
+                            ",".join(str(r.get(c, "")) for c in cols) for r in rows[:50]
+                        )
+                        result_for_llm = compact[:3000]
+                    else:
+                        result_for_llm = result[:3000]
+                except Exception:
+                    result_for_llm = result[:3000]
+
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tool_call.id,
-                    "content": result_truncated,
+                    "content": result_for_llm,
                 })
 
         # Hit max iterations
@@ -478,11 +491,25 @@ class SEUKAgent:
                     result_data = {"result": result[:100]}
                 yield f"event: tool_result\ndata: {json.dumps({'tool': fn_name, 'result': result_data})}\n\n"
 
-                result_truncated = result[:4000] + ("..." if len(result) > 4000 else "")
+                # Compact the result for step-2: convert pretty JSON to compact CSV-style
+                try:
+                    result_obj = json.loads(result)
+                    cols = result_obj.get("columns", [])
+                    rows = result_obj.get("rows", [])
+                    if cols and rows:
+                        compact = ",".join(cols) + "\n" + "\n".join(
+                            ",".join(str(r.get(c, "")) for c in cols) for r in rows[:50]
+                        )
+                        result_for_llm = compact[:3000]
+                    else:
+                        result_for_llm = result[:3000]
+                except Exception:
+                    result_for_llm = result[:3000]
+
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tool_call.id,
-                    "content": result_truncated,
+                    "content": result_for_llm,
                 })
 
         # Hit max iterations
