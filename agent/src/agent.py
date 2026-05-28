@@ -100,11 +100,20 @@ DIRECT_ANSWERS = {
             f"- Quantity Sold: {rows[0]['total_quantity_sold']}"
         ) if rows else "No service performance data found."
     },
-    # Service decline
-    r"declined|decline|worst\s+performing": {
+    # Service decline - customer count
+    r"declin\w*.*(?:number|count|customers?)|(?:number|count|customers?).*declin\w*|lost.*customers?|fewer.*customers?": {
+        "sql": "SELECT service_name, customer_decline, customer_decline_pct FROM v_service_decline_12m WHERE decline_rank_customers = 1 LIMIT 1",
+        "formatter": lambda rows: (
+            f"**Most Declined Service by Customers (12 Months):** **{rows[0]['service_name']}**\n\n"
+            f"- Customer Decline: {rows[0]['customer_decline']} customers\n"
+            f"- Decline Percentage: {rows[0]['customer_decline_pct']}%"
+        ) if rows else "No decline data found."
+    },
+    # Service decline - revenue (default)
+    r"declin\w*|worst\s+performing": {
         "sql": "SELECT service_name, revenue_decline, revenue_decline_pct FROM v_service_decline_12m WHERE decline_rank_revenue = 1 LIMIT 1",
         "formatter": lambda rows: (
-            f"**Most Declined Service (12 Months):** **{rows[0]['service_name']}**\n\n"
+            f"**Most Declined Service by Revenue (12 Months):** **{rows[0]['service_name']}**\n\n"
             f"- Revenue Decline: £{float(rows[0]['revenue_decline']):,.2f}\n"
             f"- Decline Percentage: {rows[0]['revenue_decline_pct']}%"
         ) if rows else "No decline data found."
