@@ -117,16 +117,17 @@ GROUP BY customer_name, segment;
 -- View 9: Service trends by month (for time-based trend analysis)
 CREATE OR REPLACE VIEW v_service_monthly_trends AS
 SELECT 
-    extract_month,
-    month_label,
-    service_name,
-    COUNT(DISTINCT customer_name) as customer_count,
-    COUNT(DISTINCT contract_number) as contract_count,
-    SUM(monthly_total) as monthly_revenue,
-    SUM(quantity) as total_quantity
-FROM v_service_breakdown
-GROUP BY extract_month, month_label, service_name
-ORDER BY extract_month DESC, monthly_revenue DESC;
+    sb.extract_month,
+    em.month_label,
+    sb.service_name,
+    COUNT(DISTINCT sb.customer_name) as customer_count,
+    COUNT(DISTINCT sb.contract_number) as contract_count,
+    SUM(sb.monthly_total) as monthly_revenue,
+    SUM(sb.quantity) as total_quantity
+FROM v_service_breakdown sb
+JOIN extract_months em ON em.extract_month = sb.extract_month
+GROUP BY sb.extract_month, em.month_label, sb.service_name
+ORDER BY sb.extract_month DESC, monthly_revenue DESC;
 
 -- View 10: Service performance last 6 months (for "most sold" questions)
 CREATE OR REPLACE VIEW v_service_performance_6m AS
@@ -223,6 +224,159 @@ FROM (
 GROUP BY service_category
 ORDER BY customer_count DESC;
 
+-- View 14: Customer monthly headcount — customers active per month
+CREATE OR REPLACE VIEW v_customer_monthly_headcount AS
+SELECT
+    em.extract_month,
+    em.month_label,
+    COUNT(DISTINCT c.customer_id) AS customer_count,
+    SUM(co.contract_total_monthly) AS total_monthly_revenue,
+    COUNT(DISTINCT co.contract_number) AS contract_count
+FROM contracts co
+JOIN customers c ON c.id = co.customer_id
+JOIN extract_months em ON em.id = co.extract_month_id
+GROUP BY em.extract_month, em.month_label
+ORDER BY em.extract_month;
+
+-- View 15: Customer wins and losses — compares each month to the prior month
+CREATE OR REPLACE VIEW v_customer_monthly_changes AS
+WITH monthly_customers AS (
+    SELECT
+        em.extract_month,
+        em.month_label,
+        c.customer_id,
+        c.display_name AS customer_name,
+        c.segment,
+        c.account_manager,
+        SUM(co.contract_total_monthly) AS monthly_value
+    FROM contracts co
+    JOIN customers c ON c.id = co.customer_id
+    JOIN extract_months em ON em.id = co.extract_month_id
+    GROUP BY em.extract_month, em.month_label, c.customer_id, c.display_name, c.segment, c.account_manager
+),
+ordered_months AS (
+    SELECT DISTINCT extract_month FROM monthly_customers ORDER BY extract_month
+),
+previous_month AS (
+    SELECT
+        curr.extract_month,
+        curr.month_label,
+        curr.customer_id,
+        curr.customer_name,
+        curr.segment,
+        curr.account_manager,
+        curr.monthly_value,
+        CASE WHEN prev.customer_id IS NULL THEN 'New' ELSE 'Retained' END AS status
+    FROM monthly_customers curr
+    LEFT JOIN monthly_customers prev
+        ON prev.customer_id = curr.customer_id
+        AND prev.extract_month = (
+            SELECT MAX(extract_month) FROM ordered_months
+            WHERE extract_month < curr.extract_month
+        )
+),
+lost_customers AS (
+    SELECT
+        next_m.extract_month,
+        curr.month_label,
+        curr.customer_id,
+        curr.customer_name,
+        curr.segment,
+        curr.account_manager,
+        curr.monthly_value,
+        'Lost' AS status
+    FROM monthly_customers curr
+    JOIN ordered_months next_m ON next_m.extract_month = (
+        SELECT MIN(extract_month) FROM ordered_months
+        WHERE extract_month > curr.extract_month
+    )
+    WHERE NOT EXISTS (
+        SELECT 1 FROM monthly_customers nxt
+        WHERE nxt.customer_id = curr.customer_id
+          AND nxt.extract_month = next_m.extract_month
+    )
+)
+SELECT extract_month, month_label, customer_id, customer_name, segment, account_manager, monthly_value, status
+FROM previous_month
+UNION ALL
+SELECT extract_month, month_label, customer_id, customer_name, segment, account_manager, monthly_value, status
+FROM lost_customers
+ORDER BY extract_month, status, customer_name;
+
+-- View 16: Customer win/loss summary by period
+-- Use period_months = 3, 6, 9, or 12 to control lookback
+CREATE OR REPLACE VIEW v_customer_win_loss_summary AS
+WITH period_ends AS (
+    SELECT MAX(extract_month) AS latest_month FROM extract_months
+),
+periods AS (
+    SELECT p.months,
+           pe.latest_month AS end_month,
+           TO_CHAR(
+               TO_DATE(pe.latest_month, 'YYYY-MM') - (p.months || ' months')::INTERVAL,
+               'YYYY-MM'
+           ) AS start_month
+    FROM period_ends pe
+    CROSS JOIN (VALUES (3),(6),(9),(12)) AS p(months)
+),
+customers_in_period AS (
+    SELECT
+        pr.months AS period_months,
+        pr.start_month,
+        pr.end_month,
+        c.customer_id,
+        MIN(em.extract_month) AS first_seen,
+        MAX(em.extract_month) AS last_seen
+    FROM contracts co
+    JOIN customers c ON c.id = co.customer_id
+    JOIN extract_months em ON em.id = co.extract_month_id
+    CROSS JOIN periods pr
+    WHERE em.extract_month > pr.start_month
+      AND em.extract_month <= pr.end_month
+    GROUP BY pr.months, pr.start_month, pr.end_month, c.customer_id
+),
+baseline AS (
+    SELECT pr.months AS period_months, c.customer_id
+    FROM contracts co
+    JOIN customers c ON c.id = co.customer_id
+    JOIN extract_months em ON em.id = co.extract_month_id
+    CROSS JOIN periods pr
+    WHERE em.extract_month = pr.start_month
+    GROUP BY pr.months, c.customer_id
+)
+SELECT
+    cip.period_months,
+    cip.start_month,
+    cip.end_month,
+    COUNT(DISTINCT CASE WHEN b.customer_id IS NULL THEN cip.customer_id END) AS customers_won,
+    COUNT(DISTINCT CASE WHEN cip.last_seen < cip.end_month AND b.customer_id IS NOT NULL THEN cip.customer_id END) AS customers_lost,
+    COUNT(DISTINCT CASE WHEN b.customer_id IS NOT NULL AND cip.last_seen = cip.end_month THEN cip.customer_id END) AS customers_retained,
+    COUNT(DISTINCT CASE WHEN b.customer_id IS NOT NULL THEN cip.customer_id END) AS customers_at_start
+FROM customers_in_period cip
+LEFT JOIN baseline b ON b.customer_id = cip.customer_id AND b.period_months = cip.period_months
+GROUP BY cip.period_months, cip.start_month, cip.end_month
+ORDER BY cip.period_months;
+
+-- View 17: Revenue trend by month
+CREATE OR REPLACE VIEW v_revenue_monthly_trend AS
+SELECT
+    em.extract_month,
+    em.month_label,
+    COUNT(DISTINCT c.customer_id) AS customer_count,
+    COUNT(DISTINCT co.contract_number) AS contract_count,
+    SUM(co.contract_total_monthly) AS total_monthly_revenue,
+    LAG(SUM(co.contract_total_monthly)) OVER (ORDER BY em.extract_month) AS prev_month_revenue,
+    SUM(co.contract_total_monthly) - LAG(SUM(co.contract_total_monthly)) OVER (ORDER BY em.extract_month) AS revenue_change,
+    ROUND(
+        (SUM(co.contract_total_monthly) - LAG(SUM(co.contract_total_monthly)) OVER (ORDER BY em.extract_month))
+        / NULLIF(LAG(SUM(co.contract_total_monthly)) OVER (ORDER BY em.extract_month), 0) * 100, 2
+    ) AS revenue_change_pct
+FROM contracts co
+JOIN customers c ON c.id = co.customer_id
+JOIN extract_months em ON em.id = co.extract_month_id
+GROUP BY em.extract_month, em.month_label
+ORDER BY em.extract_month;
+
 -- Grant permissions
 GRANT SELECT ON v_revenue_by_segment TO mcp_readonly;
 GRANT SELECT ON v_account_manager_performance TO mcp_readonly;
@@ -237,3 +391,7 @@ GRANT SELECT ON v_service_performance_6m TO mcp_readonly;
 GRANT SELECT ON v_service_decline_12m TO mcp_readonly;
 GRANT SELECT ON v_low_service_customers TO mcp_readonly;
 GRANT SELECT ON v_service_count_distribution TO mcp_readonly;
+GRANT SELECT ON v_customer_monthly_headcount TO mcp_readonly;
+GRANT SELECT ON v_customer_monthly_changes TO mcp_readonly;
+GRANT SELECT ON v_customer_win_loss_summary TO mcp_readonly;
+GRANT SELECT ON v_revenue_monthly_trend TO mcp_readonly;
