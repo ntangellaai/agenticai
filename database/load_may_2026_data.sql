@@ -5,7 +5,7 @@
 -- If you have a new anonymised_summary_May_2026.sql file, replace the existing one first
 
 \echo 'Loading May 2026 data...'
-\i service_express_uk/anonymised_summary_May_2026.sql
+\i /tmp/anonymised_summary_May_2026.sql
 
 -- Refresh all materialized views and common views
 \echo 'Refreshing views...'

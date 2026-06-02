@@ -1,15 +1,7 @@
 #!/bin/bash
 # Deploy May 2026 data to PostgreSQL database
 
-# Database connection parameters
-DB_HOST="postgres-svc.postgres.svc.cluster.local"
-DB_PORT="5432"
-DB_NAME="service_express_uk"
-DB_USER="postgres"
-DB_PASSWORD="postgres123"
-
 echo "=== Deploying May 2026 Data ==="
-echo "Database: $DB_HOST:$DB_PORT/$DB_NAME"
 
 # Check if the SQL file exists
 SQL_FILE="service_express_uk/anonymised_summary_May_2026.sql"
@@ -19,15 +11,20 @@ if [ ! -f "$SQL_FILE" ]; then
     exit 1
 fi
 
-# Connect to database and run the load script
-echo "Connecting to database and loading May 2026 data..."
-PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f load_may_2026_data.sql
+# Use PostgreSQL pod to execute SQL
+echo "Connecting to PostgreSQL pod and loading May 2026 data..."
+# Copy files to the pod
+oc cp load_may_2026_data.sql postgres-0:/tmp/
+oc cp service_express_uk/anonymised_summary_May_2026.sql postgres-0:/tmp/
+
+# Execute the load script in the pod
+oc exec postgres-0 -- psql -U postgres -d service_express_uk -f /tmp/load_may_2026_data.sql
 
 if [ $? -eq 0 ]; then
     echo "✅ May 2026 data loaded successfully!"
     echo ""
     echo "=== Verification Query ==="
-    PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "
+    oc exec postgres-0 -- psql -U postgres -d service_express_uk -c "
     SELECT 
         'May 2026' as month_loaded,
         COUNT(DISTINCT customer_name) as customers,
@@ -45,7 +42,7 @@ fi
 echo ""
 echo "=== Testing Views ==="
 echo "Testing top customers view..."
-PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "
+oc exec postgres-0 -- psql -U postgres -d service_express_uk -c "
 SELECT customer_name, total_monthly_value 
 FROM v_top_customers 
 WHERE revenue_rank <= 3;
@@ -53,7 +50,7 @@ WHERE revenue_rank <= 3;
 
 echo ""
 echo "Testing service revenue view..."
-PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "
+oc exec postgres-0 -- psql -U postgres -d service_express_uk -c "
 SELECT service_name, total_monthly_revenue, customer_count 
 FROM v_service_revenue_summary 
 WHERE revenue_rank <= 3;
