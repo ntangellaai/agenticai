@@ -1,14 +1,5 @@
--- Load May 2026 data and refresh all views
--- Run this script to update the database with new May 2026 data
-
--- First, ensure the May 2026 data file exists and is loaded
--- If you have a new anonymised_summary_May_2026.sql file, replace the existing one first
-
-\echo 'Loading May 2026 data...'
-\i /tmp/anonymised_summary_May_2026.sql
-
--- Refresh all materialized views and common views
-\echo 'Refreshing views...'
+-- Refresh all views for May 2026 data
+-- Run this to fix the views after data is loaded
 
 -- Refresh the base views that depend on the new data
 CREATE OR REPLACE VIEW v_contract_summary AS
@@ -80,15 +71,9 @@ ORDER BY total_monthly_value DESC;
 -- Now refresh all the analytical views
 \i /tmp/common_views.sql
 
--- Verify the data was loaded correctly
-\echo 'Verifying May 2026 data load...'
-SELECT 
-    'May 2026' as month_loaded,
-    COUNT(DISTINCT customer_name) as customers,
-    COUNT(DISTINCT contract_number) as contracts,
-    SUM(contract_total_monthly) as total_monthly_revenue,
-    (SELECT COUNT(DISTINCT service_name) FROM v_service_breakdown WHERE extract_month = '2026-05') as unique_services
-FROM v_contract_summary
-WHERE extract_month = '2026-05';
-
-\echo 'May 2026 data load complete!'
+-- Verify the views work
+\echo 'Testing views...'
+SELECT 'May 2026 data verified' as status,
+       (SELECT COUNT(*) FROM v_contract_summary WHERE extract_month = '2026-05') as contracts,
+       (SELECT COUNT(DISTINCT customer_name) FROM v_contract_summary WHERE extract_month = '2026-05') as customers,
+       (SELECT COUNT(DISTINCT service_name) FROM v_service_breakdown WHERE extract_month = '2026-05') as services;

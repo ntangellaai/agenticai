@@ -16,6 +16,7 @@ echo "Connecting to PostgreSQL pod and loading May 2026 data..."
 # Copy files to the pod
 oc cp load_may_2026_data.sql postgres-0:/tmp/
 oc cp service_express_uk/anonymised_summary_May_2026.sql postgres-0:/tmp/
+oc cp common_views.sql postgres-0:/tmp/
 
 # Execute the load script in the pod
 oc exec postgres-0 -- psql -U postgres -d service_express_uk -f /tmp/load_may_2026_data.sql
@@ -45,7 +46,8 @@ echo "Testing top customers view..."
 oc exec postgres-0 -- psql -U postgres -d service_express_uk -c "
 SELECT customer_name, total_monthly_value 
 FROM v_top_customers 
-WHERE revenue_rank <= 3;
+ORDER BY total_monthly_value DESC 
+LIMIT 3;
 "
 
 echo ""
@@ -53,7 +55,8 @@ echo "Testing service revenue view..."
 oc exec postgres-0 -- psql -U postgres -d service_express_uk -c "
 SELECT service_name, total_monthly_revenue, customer_count 
 FROM v_service_revenue_summary 
-WHERE revenue_rank <= 3;
+ORDER BY total_monthly_revenue DESC 
+LIMIT 3;
 "
 
 echo ""
