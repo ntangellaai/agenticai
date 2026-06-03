@@ -48,6 +48,7 @@ EXAMPLES_CONTEXT = """Examples of correct queries:
 - Revenue trend: query("SELECT extract_month,customer_count,total_monthly_revenue,revenue_change_pct FROM v_revenue_monthly_trend ORDER BY extract_month",database="service_express_uk")
 - New customers this month: query("SELECT customer_name,segment,account_manager FROM v_customer_monthly_changes WHERE status='New' AND extract_month=(SELECT MAX(extract_month) FROM extract_months)",database="service_express_uk")
 - Lost customers last 3 months: query("SELECT customer_name,segment,monthly_value FROM v_customer_monthly_changes WHERE status='Lost' AND extract_month >= TO_CHAR(CURRENT_DATE - INTERVAL '3 months','YYYY-MM') ORDER BY monthly_value DESC",database="service_express_uk")
+- Compare service customers two months: query("SELECT '2025-06' AS period, COUNT(DISTINCT customer_name) AS customer_count FROM v_service_breakdown WHERE service_name ILIKE '%x86 IaaS%' AND extract_month='2025-06' UNION ALL SELECT '2026-05', COUNT(DISTINCT customer_name) FROM v_service_breakdown WHERE service_name ILIKE '%x86 IaaS%' AND extract_month='2026-05'",database="service_express_uk")
 
 Now answer this question:"""
 
@@ -106,8 +107,8 @@ DIRECT_ANSWERS = {
             f"- Quantity Sold: {rows[0]['total_quantity_sold']}"
         ) if rows else "No service performance data found."
     },
-    # Service decline - customer count
-    r"declin\w*.*(?:number|count|customers?)|(?:number|count|customers?).*declin\w*|lost.*customers?|fewer.*customers?": {
+    # Service decline - customer count (only when asking about a service declining, not general win/loss)
+    r"declin\w*.*(?:number|count|customers?)|(?:number|count|customers?).*declin\w*|fewer.*customers?": {
         "sql": "SELECT service_name, customer_decline, customer_decline_pct FROM v_service_decline_12m WHERE decline_rank_customers = 1 LIMIT 1",
         "formatter": lambda rows: (
             f"**Most Declined Service by Customers (12 Months):** **{rows[0]['service_name']}**\n\n"
