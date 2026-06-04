@@ -1,0 +1,8 @@
+# Existing routes are patched in-place to point to oauth2-proxy-svc.
+# Run the following on bastion to retarget without recreating:
+#
+#   oc patch route agent-route -n agenticai-demo \
+#     -p '{"spec":{"to":{"name":"oauth2-proxy-svc"},"port":{"targetPort":"http"}}}'
+#
+#   oc patch route agent-route-vdi -n agenticai-demo \
+#     -p '{"spec":{"to":{"name":"oauth2-proxy-svc"},"port":{"targetPort":"http"}}}'

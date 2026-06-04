@@ -72,7 +72,8 @@ spec:
         directAccessGrantsEnabled: false
         serviceAccountsEnabled: false
         redirectUris:
-          - "https://agent-agenticai-demo.apps.demo-0847.miscplatform.io/*"
+          - "https://agentic-demo.apps.demo-0847.miscplatform.io/oauth2/callback"
+          - "https://agenticai.serviceexpress.com/oauth2/callback"
           - "http://localhost:8080/*"
         webOrigins:
           - "+"
