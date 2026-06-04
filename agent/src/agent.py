@@ -132,10 +132,21 @@ DIRECT_ANSWERS = {
             "\n".join([f"- **{r['urgency_bucket']}**: {r['contract_count']} contracts, £{float(r['total_monthly_value']):,.2f} (avg {r['avg_days_to_renewal']} days)" 
                        for r in rows]) if rows else "No upcoming renewals found."
     },
-    # Revenue change/year trends
-    r"revenue\s+changed|changed\s+over|year\s+over\s+year|last\s+year|revenue\s+trend": {
+    # Revenue trend month by month for top service lines
+    r"revenue\s+(trend|line|lines?|month|over\s+time)|trend\s+.*revenue\s+line|service\s+line.*trend": {
+        "sql": "SELECT service_name, extract_month, monthly_revenue FROM v_service_monthly_trends WHERE service_name IN (SELECT service_name FROM v_service_revenue_summary ORDER BY total_monthly_revenue DESC LIMIT 2) ORDER BY service_name, extract_month",
+        "formatter": lambda rows: (
+            "**Revenue Trend for Top 2 Service Lines (Month by Month):**\n\n" +
+            "\n".join([
+                f"- **{r['service_name']}** ({r['extract_month']}): £{float(r['monthly_revenue']):,.2f}"
+                for r in rows
+            ])
+        ) if rows else "No revenue trend data found."
+    },
+    # Revenue by segment (snapshot)
+    r"revenue\s+(by\s+segment|changed|year)|year\s+over\s+year|last\s+year": {
         "sql": "SELECT segment, total_monthly_revenue FROM v_revenue_by_segment ORDER BY total_monthly_revenue DESC",
-        "formatter": lambda rows: "**Current Revenue by Segment (YoY comparison requires specific view):**\n\n" + 
+        "formatter": lambda rows: "**Current Revenue by Segment:**\n\n" + 
             "\n".join([f"- **{r['segment']}**: £{float(r['total_monthly_revenue']):,.2f}" 
                        for r in rows[:5]]) if rows else "No revenue data found."
     },
