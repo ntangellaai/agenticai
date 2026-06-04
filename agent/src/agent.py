@@ -319,7 +319,7 @@ class SEUKAgent:
 
         tool_calls_log = []
         iterations = 0
-        consecutive_rejections = 0
+        total_rejections = 0
 
         while iterations < self.max_tool_calls:
             # Trim history: keep system + user message + last 6 messages to fit in 2048 ctx
@@ -387,16 +387,14 @@ class SEUKAgent:
                 result = self._call_tool(fn_name, fn_args)
                 logger.info(f"Tool result: {result[:300]}")
 
-                if '"error": "Query rejected' in result:
-                    consecutive_rejections += 1
-                    if consecutive_rejections >= 2:
+                if "Query rejected" in result:
+                    total_rejections += 1
+                    if total_rejections >= 2:
                         logger.warning("Aborting: repeated query rejections suggest prohibited access attempt")
                         return {
                             "answer": "I can only answer questions about Service Express UK contract and customer data.",
                             "tool_calls": tool_calls_log,
                         }
-                else:
-                    consecutive_rejections = 0
 
                 tool_calls_log.append({
                     "tool": fn_name,
