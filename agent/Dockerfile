@@ -7,9 +7,11 @@ FROM registry.redhat.io/ubi9/python-311:latest AS builder
 USER 0
 WORKDIR /opt/app-root
 
+ARG PIP_INDEX_URL=https://pypi.org/simple
 COPY requirements.txt ./
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir --target=/deps -r requirements.txt && \
+RUN mkdir -p /deps && \
+    pip install --no-cache-dir --timeout=120 --upgrade pip && \
+    pip install --no-cache-dir --timeout=120 --retries=5 --index-url=${PIP_INDEX_URL} --target=/deps -r requirements.txt && \
     find /deps -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true && \
     find /deps -type d -name 'tests' -exec rm -rf {} + 2>/dev/null || true && \
     find /deps -name '*.pyc' -delete 2>/dev/null || true
