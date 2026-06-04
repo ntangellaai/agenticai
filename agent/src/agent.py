@@ -240,8 +240,9 @@ class SEUKAgent:
 
     # System/catalog tables the LLM should never query
     _BLOCKED_TABLES = [
-        r"pg_shadow", r"pg_authid", r"pg_catalog\.pg_user", r"pg_user",
-        r"pg_roles", r"pg_catalog", r"information_schema\.(?!tables|columns)",
+        r"pg_shadow", r"pg_authid", r"pg_catalog", r"pg_user",
+        r"pg_roles", r"pg_type", r"pg_class", r"pg_namespace",
+        r"information_schema",
         r"pg_read_file", r"pg_ls_dir", r"pg_read_binary_file",
         r"current_setting\s*\(",
     ]
@@ -314,6 +315,7 @@ class SEUKAgent:
 
         tool_calls_log = []
         iterations = 0
+        consecutive_rejections = 0
 
         while iterations < self.max_tool_calls:
             # Trim history: keep system + user message + last 6 messages to fit in 2048 ctx
@@ -380,6 +382,17 @@ class SEUKAgent:
 
                 result = self._call_tool(fn_name, fn_args)
                 logger.info(f"Tool result: {result[:300]}")
+
+                if '"error": "Query rejected' in result:
+                    consecutive_rejections += 1
+                    if consecutive_rejections >= 2:
+                        logger.warning("Aborting: repeated query rejections suggest prohibited access attempt")
+                        return {
+                            "answer": "I can only answer questions about Service Express UK contract and customer data.",
+                            "tool_calls": tool_calls_log,
+                        }
+                else:
+                    consecutive_rejections = 0
 
                 tool_calls_log.append({
                     "tool": fn_name,
