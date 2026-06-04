@@ -52,6 +52,22 @@ EXAMPLES_CONTEXT = """Examples of correct queries:
 
 Now answer this question:"""
 
+def _fmt_revenue_trend_table(rows: list) -> str:
+    """Format revenue trend rows as a markdown table with months as rows and service lines as columns."""
+    if not rows:
+        return "No revenue trend data found."
+    services = list(dict.fromkeys(r['service_name'] for r in rows))
+    months = list(dict.fromkeys(r['extract_month'] for r in rows))
+    data = {(r['service_name'], r['extract_month']): r['monthly_revenue'] for r in rows}
+    header = "| Month | " + " | ".join(services) + " |"
+    sep = "|---|" + "---|" * len(services)
+    body = "\n".join(
+        "| " + m + " | " + " | ".join(f"£{float(data.get((s, m), 0)):,.2f}" for s in services) + " |"
+        for m in months
+    )
+    return "**Revenue Trend for Top 2 Service Lines (Month by Month):**\n\n" + header + "\n" + sep + "\n" + body
+
+
 # DIRECT ANSWERS - Bypass LLM entirely for common queries (instant response)
 # Format: pattern keywords -> (SQL query, formatter function)
 DIRECT_ANSWERS = {
@@ -135,23 +151,7 @@ DIRECT_ANSWERS = {
     # Revenue trend month by month for top service lines
     r"revenue\s+(trend|line|lines?|month|over\s+time)|trend\s+.*revenue\s+line|service\s+line.*trend": {
         "sql": "SELECT service_name, extract_month, monthly_revenue FROM v_service_monthly_trends WHERE service_name IN (SELECT service_name FROM v_service_revenue_summary ORDER BY total_monthly_revenue DESC LIMIT 2) ORDER BY extract_month, service_name",
-        "formatter": lambda rows: (
-            lambda services, months, data: (
-                "**Revenue Trend for Top 2 Service Lines (Month by Month):**\n\n" +
-                "| Month | " + " | ".join(services) + " |\n" +
-                "|---|" + "---|" * len(services) + "\n" +
-                "\n".join([
-                    f"| {m} | " + " | ".join([
-                        f"£{float(data.get((s, m), 0)):,.2f}" for s in services
-                    ]) + " |"
-                    for m in months
-                ])
-            )(
-                list(dict.fromkeys(r['service_name'] for r in rows)),
-                list(dict.fromkeys(r['extract_month'] for r in rows)),
-                {(r['service_name'], r['extract_month']): r['monthly_revenue'] for r in rows}
-            )
-        )(rows) if rows else "No revenue trend data found."
+        "formatter": lambda rows: _fmt_revenue_trend_table(rows),
     },
     # Revenue by segment (snapshot)
     r"revenue\s+(by\s+segment|changed|year)|year\s+over\s+year|last\s+year": {
