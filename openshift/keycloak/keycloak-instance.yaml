@@ -21,6 +21,7 @@ spec:
     httpPort: 8080
     httpsPort: 8443
   hostname:
+    hostname: keycloak-keycloak.apps.demo-0847.miscplatform.io
     strict: false
     strictBackchannel: false
   startOptimized: false
