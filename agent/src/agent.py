@@ -226,15 +226,46 @@ class SEUKAgent:
         self.model = llm_model
         self.max_tool_calls = max_tool_calls
 
+    # Patterns that indicate prompt injection attempts
+    _INJECTION_PATTERNS = [
+        r"ignore\s+(your\s+)?(previous|prior|all)\s+instructions",
+        r"(forget|disregard)\s+(you\s+are|your\s+role|instructions)",
+        r"\[\s*system\s*\]",
+        r"new\s+instructions\s*:",
+        r"you\s+are\s+now\s+(in\s+)?admin\s+mode",
+        r"as\s+a\s+dba\s+assistant",
+        r"disable\s+all\s+filters",
+        r"execute\s+this\s+as\s+(the\s+)?postgres\s+superuser",
+    ]
+
+    # System/catalog tables the LLM should never query
+    _BLOCKED_TABLES = [
+        r"pg_shadow", r"pg_authid", r"pg_catalog\.pg_user", r"pg_user",
+        r"pg_roles", r"pg_catalog", r"information_schema\.(?!tables|columns)",
+        r"pg_read_file", r"pg_ls_dir", r"pg_read_binary_file",
+        r"current_setting\s*\(",
+    ]
+
+    def _check_injection(self, question: str) -> bool:
+        """Return True if question looks like a prompt injection attempt."""
+        q = question.lower()
+        for pattern in self._INJECTION_PATTERNS:
+            if re.search(pattern, q):
+                return True
+        return False
+
     def _validate_sql(self, sql: str) -> bool:
         """Agent-side SQL validation (defence in depth)."""
         normalized = sql.strip().upper()
         if not (normalized.startswith("SELECT") or normalized.startswith("WITH")):
             return False
-        blocked = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE",
-                   "TRUNCATE", "GRANT", "REVOKE"]
-        for kw in blocked:
+        blocked_keywords = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE",
+                            "TRUNCATE", "GRANT", "REVOKE"]
+        for kw in blocked_keywords:
             if re.search(rf"\b{kw}\b", normalized):
+                return False
+        for pattern in self._BLOCKED_TABLES:
+            if re.search(pattern, sql, re.IGNORECASE):
                 return False
         return True
 
@@ -256,6 +287,15 @@ class SEUKAgent:
 
     def answer(self, question: str) -> dict[str, Any]:
         """Process a user question through the agent loop."""
+        # Reject prompt injection attempts before touching the LLM
+        if self._check_injection(question):
+            logger.warning(f"Prompt injection attempt detected: {question[:80]}")
+            return {
+                "answer": "I can only answer questions about Service Express UK contract and customer data.",
+                "tool_calls": [],
+                "cached": False,
+            }
+
         # Try direct answer first (bypass LLM for common queries)
         is_direct, direct_answer = try_direct_answer(question, self.mcp_client)
         if is_direct:
