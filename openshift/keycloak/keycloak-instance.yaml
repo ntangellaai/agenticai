@@ -25,6 +25,8 @@ spec:
     strict: false
     strictBackchannel: false
   startOptimized: false
+  proxy:
+    headers: xforwarded
   additionalOptions:
     - name: log-level
       value: INFO
