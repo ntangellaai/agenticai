@@ -1,0 +1,88 @@
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: KeycloakRealmImport
+metadata:
+  name: demo-realm-import
+  namespace: keycloak
+spec:
+  keycloakCRName: keycloak
+  realm:
+    realm: demo
+    displayName: "AI Agent Demo"
+    enabled: true
+    loginTheme: keycloak
+    ssoSessionIdleTimeout: 1800
+    ssoSessionMaxLifespan: 36000
+    accessTokenLifespan: 300
+
+    # Groups
+    groups:
+      - name: admins
+        path: /admins
+      - name: analysts
+        path: /analysts
+      - name: viewers
+        path: /viewers
+
+    # Users
+    users:
+      - username: admin-user
+        enabled: true
+        firstName: Admin
+        lastName: User
+        email: admin@demo.local
+        credentials:
+          - type: password
+            value: Admin1234!
+            temporary: false
+        groups:
+          - /admins
+
+      - username: analyst1
+        enabled: true
+        firstName: Alice
+        lastName: Analyst
+        email: alice@demo.local
+        credentials:
+          - type: password
+            value: Analyst1234!
+            temporary: false
+        groups:
+          - /analysts
+
+      - username: viewer1
+        enabled: true
+        firstName: Victor
+        lastName: Viewer
+        email: victor@demo.local
+        credentials:
+          - type: password
+            value: Viewer1234!
+            temporary: false
+        groups:
+          - /viewers
+
+    # OIDC client for the agent app
+    clients:
+      - clientId: agenticai-agent
+        name: "AgenticAI Agent"
+        enabled: true
+        publicClient: false
+        secret: changeme-client-secret   # Replace with a strong secret
+        standardFlowEnabled: true
+        directAccessGrantsEnabled: false
+        serviceAccountsEnabled: false
+        redirectUris:
+          - "https://agent-agenticai-demo.apps.demo-0847.miscplatform.io/*"
+          - "http://localhost:8080/*"
+        webOrigins:
+          - "+"
+        defaultClientScopes:
+          - openid
+          - profile
+          - email
+          - roles
+        optionalClientScopes:
+          - address
+          - phone
+        attributes:
+          pkce.code.challenge.method: S256
