@@ -134,14 +134,24 @@ DIRECT_ANSWERS = {
     },
     # Revenue trend month by month for top service lines
     r"revenue\s+(trend|line|lines?|month|over\s+time)|trend\s+.*revenue\s+line|service\s+line.*trend": {
-        "sql": "SELECT service_name, extract_month, monthly_revenue FROM v_service_monthly_trends WHERE service_name IN (SELECT service_name FROM v_service_revenue_summary ORDER BY total_monthly_revenue DESC LIMIT 2) ORDER BY service_name, extract_month",
+        "sql": "SELECT service_name, extract_month, monthly_revenue FROM v_service_monthly_trends WHERE service_name IN (SELECT service_name FROM v_service_revenue_summary ORDER BY total_monthly_revenue DESC LIMIT 2) ORDER BY extract_month, service_name",
         "formatter": lambda rows: (
-            "**Revenue Trend for Top 2 Service Lines (Month by Month):**\n\n" +
-            "\n".join([
-                f"- **{r['service_name']}** ({r['extract_month']}): £{float(r['monthly_revenue']):,.2f}"
-                for r in rows
-            ])
-        ) if rows else "No revenue trend data found."
+            lambda services, months, data: (
+                "**Revenue Trend for Top 2 Service Lines (Month by Month):**\n\n" +
+                "| Month | " + " | ".join(services) + " |\n" +
+                "|---|" + "---|" * len(services) + "\n" +
+                "\n".join([
+                    f"| {m} | " + " | ".join([
+                        f"£{float(data.get((s, m), 0)):,.2f}" for s in services
+                    ]) + " |"
+                    for m in months
+                ])
+            )(
+                list(dict.fromkeys(r['service_name'] for r in rows)),
+                list(dict.fromkeys(r['extract_month'] for r in rows)),
+                {(r['service_name'], r['extract_month']): r['monthly_revenue'] for r in rows}
+            )
+        )(rows) if rows else "No revenue trend data found."
     },
     # Revenue by segment (snapshot)
     r"revenue\s+(by\s+segment|changed|year)|year\s+over\s+year|last\s+year": {
