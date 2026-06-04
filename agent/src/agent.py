@@ -279,6 +279,10 @@ class SEUKAgent:
                     return json.dumps({"error": "Query rejected: only SELECT statements allowed"})
                 return self.mcp_client.call_tool("query", {"sql": sql})
             elif tool_name == "describe_table":
+                table = arguments.get("table", "")
+                for pattern in self._BLOCKED_TABLES:
+                    if re.search(pattern, table, re.IGNORECASE):
+                        return json.dumps({"error": "Query rejected: only SELECT statements allowed"})
                 return self.mcp_client.call_tool("describe_table", arguments)
             else:
                 return json.dumps({"error": f"Unknown tool: {tool_name}"})
