@@ -436,6 +436,13 @@ class SEUKAgent:
         Yields SSE events: status updates, tool calls, and answer chunks."""
         import time
 
+        # Reject prompt injection attempts before touching the LLM
+        if self._check_injection(question):
+            logger.warning(f"Prompt injection attempt detected (stream): {question[:80]}")
+            safe_msg = "I can only answer questions about Service Express UK contract and customer data."
+            yield f"event: answer\ndata: {json.dumps({'chunk': safe_msg, 'done': True})}\n\n"
+            return
+
         # Try direct answer first (bypass LLM for common queries)
         is_direct, direct_answer = try_direct_answer(question, self.mcp_client)
         if is_direct:
@@ -452,6 +459,7 @@ class SEUKAgent:
 
         tool_calls_log = []
         iterations = 0
+        total_rejections = 0
 
         yield f"event: status\ndata: {json.dumps({'message': 'Thinking...'})}\n\n"
 
@@ -540,6 +548,14 @@ class SEUKAgent:
                 yield f"event: status\ndata: {json.dumps({'message': f'Running {fn_name}...'})}\n\n"
                 result = self._call_tool(fn_name, fn_args)
                 logger.info(f"Tool result: {result[:300]}")
+
+                if "Query rejected" in result:
+                    total_rejections += 1
+                    if total_rejections >= 2:
+                        logger.warning("Aborting stream: repeated query rejections suggest prohibited access attempt")
+                        safe_msg = "I can only answer questions about Service Express UK contract and customer data."
+                        yield f"event: answer\ndata: {json.dumps({'chunk': safe_msg, 'done': True})}\n\n"
+                        return
 
                 tool_calls_log.append({
                     "tool": fn_name,
