@@ -4,9 +4,7 @@ metadata:
   name: allow-agenticai-to-keycloak
   namespace: keycloak
 spec:
-  podSelector:
-    matchLabels:
-      app: keycloak
+  podSelector: {}
   ingress:
     - from:
         - namespaceSelector:
