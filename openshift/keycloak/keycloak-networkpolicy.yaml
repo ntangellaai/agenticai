@@ -35,3 +35,27 @@ spec:
           protocol: TCP
         - port: 9000
           protocol: TCP
+
+---
+# Allow postgres-db to receive connections from Keycloak pod
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-ingress-from-keycloak
+  namespace: keycloak
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres-db
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: keycloak
+              app.kubernetes.io/instance: keycloak
+              app.kubernetes.io/managed-by: keycloak-operator
+      ports:
+        - port: 5432
+          protocol: TCP
