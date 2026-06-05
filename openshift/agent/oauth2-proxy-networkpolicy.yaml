@@ -38,3 +38,12 @@ spec:
           protocol: UDP
         - port: 5353
           protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              network.openshift.io/policy-group: ingress
+      ports:
+        - port: 443
+          protocol: TCP
+        - port: 80
+          protocol: TCP
