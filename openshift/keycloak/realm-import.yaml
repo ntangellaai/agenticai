@@ -10,8 +10,8 @@ spec:
     displayName: "AI Agent Demo"
     enabled: true
     loginTheme: keycloak
-    ssoSessionIdleTimeout: 1800
-    ssoSessionMaxLifespan: 36000
+    ssoSessionIdleTimeout: 900
+    ssoSessionMaxLifespan: 7200
     accessTokenLifespan: 300
 
     # Groups

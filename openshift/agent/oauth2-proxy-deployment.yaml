@@ -30,7 +30,7 @@ spec:
             - --cookie-samesite=lax
             - --cookie-httponly=true
             - --cookie-expire=15m
-            - --cookie-refresh=0s
+            - --cookie-refresh=10m
             - --session-store-type=cookie
             - --skip-provider-button=true
             - --pass-authorization-header=true
