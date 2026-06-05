@@ -1,5 +1,5 @@
 ---
-# Allow Keycloak pod unrestricted egress (DB, DNS, clustering, OIDC callbacks)
+# 1. Keycloak pods: unrestricted egress (postgres, DNS, clustering, external OIDC)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -17,16 +17,18 @@ spec:
     - {}
 
 ---
-# Allow ingress to keycloak from the OpenShift router
+# 2. Keycloak pods: allow ingress from router (external access) and agenticai-demo
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: keycloak-ingress-router
+  name: keycloak-ingress-external
   namespace: keycloak
 spec:
   podSelector:
     matchLabels:
       app: keycloak
+      app.kubernetes.io/instance: keycloak
+      app.kubernetes.io/managed-by: keycloak-operator
   policyTypes:
     - Ingress
   ingress:
@@ -35,9 +37,16 @@ spec:
           protocol: TCP
         - port: 9000
           protocol: TCP
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agenticai-demo
+      ports:
+        - port: 8080
+          protocol: TCP
 
 ---
-# Allow postgres-db to receive connections from Keycloak pod
+# 3. postgres-db: only allow ingress from Keycloak pods on 5432
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

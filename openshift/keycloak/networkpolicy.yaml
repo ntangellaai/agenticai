@@ -4,7 +4,13 @@ metadata:
   name: allow-agenticai-to-keycloak
   namespace: keycloak
 spec:
-  podSelector: {}
+  podSelector:
+    matchLabels:
+      app: keycloak
+      app.kubernetes.io/instance: keycloak
+      app.kubernetes.io/managed-by: keycloak-operator
+  policyTypes:
+    - Ingress
   ingress:
     - from:
         - namespaceSelector:
