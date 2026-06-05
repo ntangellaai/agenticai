@@ -26,7 +26,7 @@ spec:
     hostname: keycloak-keycloak.apps.demo-0847.miscplatform.io
     strict: false
     strictBackchannel: false
-  startOptimized: false
+  startOptimized: true
   proxy:
     headers: xforwarded
   additionalOptions:
