@@ -1,9 +1,9 @@
 ---
-# Allow Keycloak pod to reach postgres-db within keycloak namespace
+# Allow Keycloak pod unrestricted egress (DB, DNS, clustering, OIDC callbacks)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: keycloak-egress-postgres
+  name: keycloak-egress-allow-all
   namespace: keycloak
 spec:
   podSelector:
@@ -14,22 +14,7 @@ spec:
   policyTypes:
     - Egress
   egress:
-    - to:
-        - podSelector:
-            matchLabels:
-              app: postgres-db
-      ports:
-        - port: 5432
-          protocol: TCP
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: openshift-dns
-      ports:
-        - port: 5353
-          protocol: UDP
-        - port: 5353
-          protocol: TCP
+    - {}
 
 ---
 # Allow ingress to keycloak from the OpenShift router

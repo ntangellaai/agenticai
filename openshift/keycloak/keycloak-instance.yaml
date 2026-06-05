@@ -20,6 +20,8 @@ spec:
     httpEnabled: true
     httpPort: 8080
     httpsPort: 8443
+  ingress:
+    enabled: false
   hostname:
     hostname: keycloak-keycloak.apps.demo-0847.miscplatform.io
     strict: false
