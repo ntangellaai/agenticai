@@ -39,9 +39,8 @@ spec:
         - port: 5353
           protocol: TCP
     - to:
-        - namespaceSelector:
-            matchLabels:
-              network.openshift.io/policy-group: ingress
+        - ipBlock:
+            cidr: 10.192.81.208/32
       ports:
         - port: 443
           protocol: TCP
