@@ -29,7 +29,8 @@ spec:
             - --cookie-secure=true
             - --cookie-samesite=lax
             - --cookie-httponly=true
-            - --cookie-expire=8h
+            - --cookie-expire=15m
+            - --cookie-refresh=0s
             - --session-store-type=cookie
             - --skip-provider-button=true
             - --pass-authorization-header=true
