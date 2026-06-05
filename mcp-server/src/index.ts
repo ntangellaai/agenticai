@@ -47,7 +47,6 @@ const CONFIG = {
       "REINDEX",
       "CLUSTER",
       "COMMENT",
-      "SECURITY",
     ],
     allowedPrefixes: ["SELECT", "WITH"],
   },
