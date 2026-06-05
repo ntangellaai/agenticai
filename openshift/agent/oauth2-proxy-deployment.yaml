@@ -21,6 +21,8 @@ spec:
             - --client-id=agenticai-agent
             - --oidc-issuer-url=https://keycloak-keycloak.apps.demo-0847.miscplatform.io/realms/demo
             - --oidc-extra-audience=agenticai-agent
+            - --insecure-oidc-skip-issuer-verification=true
+            - --oidc-discovery-url=http://keycloak-service.keycloak.svc.cluster.local:8080/realms/demo
             - --upstream=http://agent-svc:8080
             - --http-address=0.0.0.0:4180
             - --redirect-url=https://agentic-demo.apps.demo-0847.miscplatform.io/oauth2/callback
