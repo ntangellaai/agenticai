@@ -12,3 +12,20 @@ spec:
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: keycloak-serviceexpress
+  namespace: keycloak
+spec:
+  host: keycloak.serviceexpress.com
+  to:
+    kind: Service
+    name: keycloak-service
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
