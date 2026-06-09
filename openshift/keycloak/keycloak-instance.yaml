@@ -23,7 +23,7 @@ spec:
   ingress:
     enabled: false
   hostname:
-    hostname: keycloak-keycloak.apps.demo-0847.miscplatform.io
+    hostname: keycloak.serviceexpress.com
     strict: false
     strictBackchannel: false
   startOptimized: false
