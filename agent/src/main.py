@@ -80,7 +80,7 @@ UI_TEMPLATE = """
             <h1>Service Express UK AI Assistant</h1>
             <div class="subtitle">UK Cloud Business Analytics | Powered by PostgreSQL MCP on IBM Power (ppc64le) | OpenShift</div>
         </div>
-        <a href="/oauth2/sign_out?rd=https://keycloak.serviceexpress.com/realms/demo/protocol/openid-connect/logout?client_id=agenticai-agent&post_logout_redirect_uri=https%3A%2F%2Fagenticai.serviceexpress.com%2F" class="logout-btn">Logout</a>
+        <a href="/oauth2/sign_out?rd=https%3A%2F%2Fkeycloak.serviceexpress.com%2Frealms%2Fdemo%2Fprotocol%2Fopenid-connect%2Flogout%3Fclient_id%3Dagenticai-agent%26post_logout_redirect_uri%3Dhttps%253A%252F%252Fagenticai.serviceexpress.com%252F" class="logout-btn">Logout</a>
     </div>
     <div class="container">
         <div class="chat-area" id="chat"></div>
