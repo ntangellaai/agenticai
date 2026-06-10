@@ -48,9 +48,11 @@ UI_TEMPLATE = """
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'IBM Plex Sans', -apple-system, sans-serif; background: #f4f4f4; color: #161616; }
-        .header { background: #161616; color: white; padding: 1rem 2rem; }
+        .header { background: #161616; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
         .header h1 { font-size: 1.25rem; font-weight: 400; }
         .header .subtitle { font-size: 0.875rem; color: #c6c6c6; margin-top: 0.25rem; }
+        .header .logout-btn { background: #da1e28; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.875rem; text-decoration: none; }
+        .header .logout-btn:hover { background: #b81922; }
         .container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
         .chat-area { background: white; border: 1px solid #e0e0e0; border-radius: 4px; min-height: 400px; max-height: 600px; overflow-y: auto; padding: 1.5rem; margin-bottom: 1rem; }
         .message { margin-bottom: 1.5rem; }
@@ -74,8 +76,11 @@ UI_TEMPLATE = """
 </head>
 <body>
     <div class="header">
-        <h1>Service Express UK AI Assistant</h1>
-        <div class="subtitle">UK Cloud Business Analytics | Powered by PostgreSQL MCP on IBM Power (ppc64le) | OpenShift</div>
+        <div>
+            <h1>Service Express UK AI Assistant</h1>
+            <div class="subtitle">UK Cloud Business Analytics | Powered by PostgreSQL MCP on IBM Power (ppc64le) | OpenShift</div>
+        </div>
+        <a href="/oauth2/sign_out" class="logout-btn">Logout</a>
     </div>
     <div class="container">
         <div class="chat-area" id="chat"></div>
