@@ -133,6 +133,13 @@ UI_TEMPLATE = """
                     body: JSON.stringify({ question: q })
                 });
 
+                // Check for session timeout (401/403)
+                if (res.status === 401 || res.status === 403) {
+                    status.textContent = 'Session expired. Redirecting to login...';
+                    window.location.href = '/';
+                    return;
+                }
+
                 if (!res.ok || !res.body) {
                     // Fallback to non-streaming
                     const fallback = await fetch('/api/ask', {
@@ -140,6 +147,12 @@ UI_TEMPLATE = """
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ question: q })
                     });
+                    // Check fallback response for auth errors
+                    if (fallback.status === 401 || fallback.status === 403) {
+                        status.textContent = 'Session expired. Redirecting to login...';
+                        window.location.href = '/';
+                        return;
+                    }
                     const data = await fallback.json();
                     contentEl.textContent = data.answer || data.error || 'No response';
                     if (data.tool_calls && data.tool_calls.length) {
@@ -195,7 +208,9 @@ UI_TEMPLATE = """
                 }
 
             } catch (e) {
-                contentEl.textContent = 'Network error: ' + e.message;
+                // Network error - likely session timeout, redirect to login
+                contentEl.textContent = 'Session expired or network error. Redirecting to login...';
+                setTimeout(() => { window.location.href = '/'; }, 2000);
             }
 
             // Clean up temp IDs
